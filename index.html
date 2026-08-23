@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ============ TOKENS ============ */
 :root{
@@ -852,14 +853,9 @@ function renderDashboard(c){
     <div class="grid grid-2" style="margin-top:16px; align-items:stretch;">
       <div class="glass panel">
         <h3>Peta Sebaran PSKS</h3>
-        <div class="panel-sub">Klik marker untuk detail · sebaran LKS, LK3, PSM &amp; TKSK</div>
-        <div style="display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 4px;">
-          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#3fe0e0;display:inline-block;"></span>LKS</span>
-          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#8a6bff;display:inline-block;"></span>LK3</span>
-          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#ffb94a;display:inline-block;"></span>PSM</span>
-          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#ff5d7a;display:inline-block;"></span>TKSK</span>
-        </div>
-        <div class="map-wrap" style="height:320px;"><div id="dashMap"></div></div>
+        <div class="panel-sub">Sebaran seluruh LKS, LK3, PSM &amp; TKSK se-Kabupaten Manggarai Barat · klik marker untuk detail</div>
+        <div id="dashMapLegend" style="display:flex; gap:14px; flex-wrap:wrap; margin:8px 0 4px;"></div>
+        <div class="map-wrap" style="height:340px;"><div id="dashMap"></div></div>
       </div>
       <div class="glass panel">
         <h3>Notifikasi Kadaluarsa Izin</h3>
@@ -889,23 +885,44 @@ function renderDashboard(c){
 
   const map = L.map('dashMap', {scrollWheelZoom:false}).setView([-8.58,119.98], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(map);
+
+  const psksLayers = {
+    lks:   { group:L.layerGroup().addTo(map), color:'#3fe0e0', ic:'🏢', label:'LKS',  count:lks.length },
+    lk3:   { group:L.layerGroup().addTo(map), color:'#8a6bff', ic:'👨‍👩‍👧', label:'LK3',  count:lk3.length },
+    psm:   { group:L.layerGroup().addTo(map), color:'#ffb94a', ic:'🧑‍🤝‍🧑', label:'PSM',  count:psm.length },
+    tksk:  { group:L.layerGroup().addTo(map), color:'#ff5d7a', ic:'📍', label:'TKSK', count:tksk.length }
+  };
+
   lks.forEach(l=>{
-    L.circleMarker([l.lat,l.lng],{radius:8, color:'#3fe0e0', fillColor:'#3fe0e0', fillOpacity:0.8, weight:2})
-      .addTo(map).bindPopup(`<b>🏢 ${escapeHtml(l.nama)}</b><br>${escapeHtml(l.kecamatan)}<br>${statusIzinBadge(l.statusIzin)}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: LKS</span>`);
+    L.circleMarker([l.lat,l.lng],{radius:8, color:psksLayers.lks.color, fillColor:psksLayers.lks.color, fillOpacity:0.8, weight:2})
+      .addTo(psksLayers.lks.group).bindPopup(`<b>🏢 ${escapeHtml(l.nama)}</b><br>${escapeHtml(l.kecamatan)}<br>${statusIzinBadge(l.statusIzin)}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: LKS</span>`);
   });
   jitteredCoord(lk3).forEach(x=>{
-    L.circleMarker([x.lat,x.lng],{radius:7, color:'#8a6bff', fillColor:'#8a6bff', fillOpacity:0.8, weight:2})
-      .addTo(map).bindPopup(`<b>👨‍👩‍👧 ${escapeHtml(x.nama)}</b><br>${escapeHtml(x.kecamatan||'-')}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: LK3</span>`);
+    L.circleMarker([x.lat,x.lng],{radius:7, color:psksLayers.lk3.color, fillColor:psksLayers.lk3.color, fillOpacity:0.8, weight:2})
+      .addTo(psksLayers.lk3.group).bindPopup(`<b>👨‍👩‍👧 ${escapeHtml(x.nama)}</b><br>${escapeHtml(x.kecamatan||'-')}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: LK3</span>`);
   });
   jitteredCoord(psm).forEach(x=>{
-    L.circleMarker([x.lat,x.lng],{radius:7, color:'#ffb94a', fillColor:'#ffb94a', fillOpacity:0.8, weight:2})
-      .addTo(map).bindPopup(`<b>🧑‍🤝‍🧑 ${escapeHtml(x.nama)}</b><br>${escapeHtml(x.kecamatan||'-')}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: PSM</span>`);
+    L.circleMarker([x.lat,x.lng],{radius:7, color:psksLayers.psm.color, fillColor:psksLayers.psm.color, fillOpacity:0.8, weight:2})
+      .addTo(psksLayers.psm.group).bindPopup(`<b>🧑‍🤝‍🧑 ${escapeHtml(x.nama)}</b><br>${escapeHtml(x.kecamatan||'-')}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: PSM</span>`);
   });
   tksk.forEach(t=>{
     const coord = kecCoord(t.wilayah);
-    L.circleMarker([coord.lat + jitterVal(t.id), coord.lng + jitterVal(t.id+'x')],{radius:7, color:'#ff5d7a', fillColor:'#ff5d7a', fillOpacity:0.8, weight:2})
-      .addTo(map).bindPopup(`<b>📍 ${escapeHtml(t.nama)}</b><br>${escapeHtml(t.wilayah)}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: TKSK</span>`);
+    L.circleMarker([coord.lat + jitterVal(t.id), coord.lng + jitterVal(t.id+'x')],{radius:7, color:psksLayers.tksk.color, fillColor:psksLayers.tksk.color, fillOpacity:0.8, weight:2})
+      .addTo(psksLayers.tksk.group).bindPopup(`<b>📍 ${escapeHtml(t.nama)}</b><br>${escapeHtml(t.wilayah)}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: TKSK</span>`);
   });
+
+  document.getElementById('dashMapLegend').innerHTML = Object.entries(psksLayers).map(([key,v])=>`
+    <label style="font-size:11.5px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
+      <input type="checkbox" checked data-layer="${key}" style="accent-color:${v.color}; cursor:pointer;"/>
+      <span style="width:9px;height:9px;border-radius:50%;background:${v.color};display:inline-block;"></span>${v.ic} ${v.label} (${v.count})
+    </label>`).join('');
+  document.querySelectorAll('#dashMapLegend input[data-layer]').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+      const layer = psksLayers[e.target.dataset.layer].group;
+      if(e.target.checked) map.addLayer(layer); else map.removeLayer(layer);
+    });
+  });
+
   setTimeout(()=>map.invalidateSize(), 200);
 
   const notifList = getExpiringNotifications();
@@ -1018,12 +1035,35 @@ function openLksModal(id){
         <div class="field"><label>Status Dokumen</label>
           <select id="fStatusDok">${["Menunggu Verifikasi","Disetujui","Ditolak"].map(s=>`<option ${l&&l.statusDokumen===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
+        <div class="field full"><label>Jenis Dokumen yang Diunggah</label>
+          <select id="fDocJenis"><option>Izin Operasional</option><option>Tanda Daftar Dinas</option><option>Akta Notaris</option><option>Lainnya</option></select>
+        </div>
+        <div class="field full"><label>Unggah Dokumen (PDF, bisa lebih dari satu)</label>
+          <input type="file" id="fFiles" accept="application/pdf,.pdf" multiple/>
+          <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">${l && (l.dokumen||[]).length ? l.dokumen.length+' berkas sudah tersimpan sebelumnya — berkas baru akan ditambahkan.' : 'Belum ada dokumen. Opsional, bisa diunggah kemudian.'}</div>
+        </div>
       </div>
-      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary" id="lksFormSubmitBtn">Simpan</button></div>
     </form>
   `);
-  document.getElementById('lksForm').addEventListener('submit', e=>{
+  document.getElementById('lksForm').addEventListener('submit', async e=>{
     e.preventDefault();
+    const files = Array.from(document.getElementById('fFiles').files||[]);
+    for(const f of files){ if(!isPdfFile(f)){ toast('Semua berkas yang diunggah harus berformat PDF.','err'); return; } }
+    const submitBtn = document.getElementById('lksFormSubmitBtn');
+    submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...';
+    const docJenis = document.getElementById('fDocJenis').value;
+    let newDocs = [];
+    try{
+      for(const f of files){
+        const fileData = await fileToDataURL(f);
+        newDocs.push({id:uid(), nama:f.name, tipe:docJenis, tglUpload:todayISO(), status:'Menunggu Verifikasi', fileData});
+      }
+    }catch(err){
+      toast('Gagal membaca salah satu berkas PDF.','err');
+      submitBtn.disabled = false; submitBtn.textContent = 'Simpan';
+      return;
+    }
     const lksList = db_get(DB_KEYS.lks, []);
     const data = {
       nama:document.getElementById('fNama').value.trim(), alamat:document.getElementById('fAlamat').value.trim(),
@@ -1035,11 +1075,12 @@ function openLksModal(id){
     if(isEdit){
       const idx = lksList.findIndex(x=>x.id===id);
       lksList[idx] = {...lksList[idx], ...data, statusIzin:recalcStatusIzin({tglIzinHabis:data.tglIzinHabis})};
-      addLog(CURRENT_USER.name, 'Edit Data LKS', `Memperbarui data ${data.nama}`);
+      if(newDocs.length){ lksList[idx].dokumen = [...(lksList[idx].dokumen||[]), ...newDocs]; }
+      addLog(CURRENT_USER.name, 'Edit Data LKS', `Memperbarui data ${data.nama}${newDocs.length?` (+${newDocs.length} dokumen PDF baru)`:''}`);
     } else {
       const newId = "LKS-"+String(lksList.length+1).padStart(3,'0');
-      lksList.push({id:newId, ...data, tglDaftar:todayISO(), statusIzin:recalcStatusIzin({tglIzinHabis:data.tglIzinHabis}), dokumen:[]});
-      addLog(CURRENT_USER.name, 'Tambah Data LKS', `Menambahkan lembaga baru ${data.nama}`);
+      lksList.push({id:newId, ...data, tglDaftar:todayISO(), statusIzin:recalcStatusIzin({tglIzinHabis:data.tglIzinHabis}), dokumen:newDocs});
+      addLog(CURRENT_USER.name, 'Tambah Data LKS', `Menambahkan lembaga baru ${data.nama}${newDocs.length?` (${newDocs.length} dokumen PDF)`:''}`);
     }
     db_set(DB_KEYS.lks, lksList);
     closeModal(); toast('Data LKS berhasil disimpan.'); render('lks');
@@ -1354,6 +1395,53 @@ function downloadLaporanFile(id){
   downloadStoredDoc(r && r.fileLaporan);
 }
 
+/* ================= EXPORT KE SPREADSHEET (EXCEL) ================= */
+// Meratakan tiap kategori data menjadi baris tabel yang rapi untuk dibuka di Excel/Spreadsheet.
+// Berkas PDF (base64) sengaja tidak disertakan di sheet (terlalu besar untuk sel spreadsheet);
+// yang disertakan adalah nama berkas & jumlahnya, dokumen aslinya diunduh terpisah lewat tombol ⬇.
+function toSheetRows(key, list){
+  list = list || [];
+  if(key==='lks'){
+    return list.map(l=>({
+      ID:l.id, Nama:l.nama, Alamat:l.alamat, Kecamatan:l.kecamatan, "Jenis Layanan":l.jenis,
+      Pimpinan:l.pimpinan, Kontak:l.kontak, "Tgl Daftar":l.tglDaftar, "Status Izin":l.statusIzin,
+      "Tgl Izin Habis":l.tglIzinHabis, "Status Dokumen":l.statusDokumen, Latitude:l.lat, Longitude:l.lng,
+      "Jumlah Dokumen PDF":(l.dokumen||[]).length, "Nama Berkas Dokumen":(l.dokumen||[]).map(d=>d.nama).join('; ')
+    }));
+  }
+  if(key==='lk3' || key==='psm'){
+    return list.map(x=>({
+      ID:x.id, Nama:x.nama, Kecamatan:x.kecamatan||'-', Kontak:x.kontak||'-', Keterangan:x.ket||'-',
+      "Berkas Dokumen PDF": x.dokumen && x.dokumen.nama ? x.dokumen.nama : '-'
+    }));
+  }
+  if(key==='tksk'){
+    return list.map(t=>({
+      ID:t.id, Nama:t.nama, "NIP/No. Registrasi":t.nip, "Wilayah Tugas":t.wilayah, Kontak:t.kontak,
+      "Berkas Dokumen PDF": t.dokumen && t.dokumen.nama ? t.dokumen.nama : '-'
+    }));
+  }
+  if(key==='laporan'){
+    return list.map(r=>({
+      ID:r.id, Tanggal:r.tanggal, Petugas:r.tkskNama, "Lembaga Ditinjau":r.lksNama, Catatan:r.catatan,
+      Latitude:r.lat, Longitude:r.lng, "Berkas Laporan PDF": r.fileLaporan && r.fileLaporan.nama ? r.fileLaporan.nama : '-'
+    }));
+  }
+  if(key==='log'){
+    return list.map(l=>({ Waktu:new Date(l.waktu).toLocaleString('id-ID'), Aktor:l.aktor, Aksi:l.aksi, Detail:l.detail }));
+  }
+  return list;
+}
+function downloadSheetFile(filename, sheets){
+  const wb = XLSX.utils.book_new();
+  sheets.forEach(s=>{
+    const rows = s.rows.length ? s.rows : [{Info:'Tidak ada data'}];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, s.name.substring(0,31));
+  });
+  XLSX.writeFile(wb, filename);
+}
+
 /* ================= ADMIN: LOG ================= */
 function renderLog(c){
   const log = db_get(DB_KEYS.log, []);
@@ -1375,8 +1463,8 @@ function renderBackup(c){
     <div class="grid grid-3">
       <div class="glass panel">
         <h3>📦 Backup Seluruh Data</h3>
-        <div class="panel-sub">Unduh seluruh basis data INUK (LKS, LK3, PSM, TKSK, Laporan, Log) dalam satu berkas JSON.</div>
-        <button class="btn btn-primary btn-block" id="backupAllBtn">Unduh Backup JSON</button>
+        <div class="panel-sub">Unduh seluruh basis data INUK (LKS, LK3, PSM, TKSK, Laporan, Log) dalam satu berkas Excel — tiap kategori jadi sheet terpisah, siap dibuka di spreadsheet.</div>
+        <button class="btn btn-primary btn-block" id="backupAllBtn">📊 Unduh Backup (Excel)</button>
       </div>
       <div class="glass panel">
         <h3>🗺️ Ekspor GeoJSON</h3>
@@ -1386,7 +1474,7 @@ function renderBackup(c){
     </div>
     <div class="glass panel" style="margin-top:16px;">
       <h3>📄 Unduhan Data per Kategori PSKS</h3>
-      <div class="panel-sub">Setiap unduhan berisi keseluruhan data pada kategori terkait, dalam format JSON.</div>
+      <div class="panel-sub">Setiap unduhan berisi keseluruhan data pada kategori terkait, dalam format Excel (.xlsx) — dapat langsung dibuka/diakses di Microsoft Excel, Google Sheets, atau aplikasi spreadsheet lainnya.</div>
       <div class="grid grid-4" style="margin-top:6px;">
         <button class="btn btn-ghost btn-block" id="exportLksBtn">🏢 Unduh Data LKS</button>
         <button class="btn btn-ghost btn-block" id="exportLk3Btn">👨‍👩‍👧 Unduh Data LK3</button>
@@ -1401,16 +1489,16 @@ function renderBackup(c){
       </div>
     </div>`;
   document.getElementById('backupAllBtn').addEventListener('click', ()=>{
-    const all = {};
-    Object.entries(DB_KEYS).forEach(([k,v])=>{ if(k!=='session') all[k]=db_get(v,[]); });
-    downloadFile('inuk_backup_'+todayISO()+'.json', JSON.stringify(all,null,2));
-    addLog(CURRENT_USER.name, 'Backup Data', 'Mengunduh backup penuh basis data INUK');
-    toast('Backup penuh berhasil diunduh.');
+    const sheetKeys = ['lks','lk3','psm','tksk','laporan','log'];
+    const sheets = sheetKeys.map(k=>({ name:k.toUpperCase(), rows: toSheetRows(k, db_get(DB_KEYS[k],[])) }));
+    downloadSheetFile('inuk_backup_'+todayISO()+'.xlsx', sheets);
+    addLog(CURRENT_USER.name, 'Backup Data', 'Mengunduh backup penuh basis data INUK (Excel)');
+    toast('Backup penuh (Excel) berhasil diunduh.');
   });
   function exportKategori(key, label){
-    downloadFile('inuk_data_'+key+'_'+todayISO()+'.json', JSON.stringify(db_get(DB_KEYS[key],[]),null,2));
-    addLog(CURRENT_USER.name, 'Export Data', `Mengunduh seluruh data ${label}`);
-    toast(`Seluruh data ${label} berhasil diunduh.`);
+    downloadSheetFile('inuk_data_'+key+'_'+todayISO()+'.xlsx', [{ name:label, rows: toSheetRows(key, db_get(DB_KEYS[key],[])) }]);
+    addLog(CURRENT_USER.name, 'Export Data', `Mengunduh seluruh data ${label} (Excel)`);
+    toast(`Seluruh data ${label} berhasil diunduh (Excel).`);
   }
   document.getElementById('exportLksBtn').addEventListener('click', ()=>exportKategori('lks','LKS'));
   document.getElementById('exportLk3Btn').addEventListener('click', ()=>exportKategori('lk3','LK3'));
