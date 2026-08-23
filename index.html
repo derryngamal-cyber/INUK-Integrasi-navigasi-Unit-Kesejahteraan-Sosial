@@ -7,7 +7,306 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<link rel="stylesheet" href="style.css">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg-0:#060a12;
+  --bg-1:#0a1120;
+  --bg-2:#0d1830;
+  --glass: rgba(18,28,48,0.55);
+  --glass-brd: rgba(120,190,255,0.16);
+  --neon-cyan:#3fe0e0;
+  --neon-teal:#22c9a0;
+  --neon-violet:#8a6bff;
+  --neon-amber:#ffb94a;
+  --neon-rose:#ff5d7a;
+  --text-hi:#eef4ff;
+  --text-mid:#a9b7d1;
+  --text-dim:#6d7c9c;
+  --font-display:'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body:'Inter', 'Segoe UI', sans-serif;
+  --font-mono:'JetBrains Mono', 'Consolas', monospace;
+  --r-sm:10px; --r-md:16px; --r-lg:22px;
+  --shadow-glow: 0 0 0 1px var(--glass-brd), 0 8px 30px rgba(0,0,0,0.45);
+}
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:var(--font-body);
+  color:var(--text-hi);
+  background:
+    radial-gradient(1100px 600px at 85% -10%, rgba(63,224,224,0.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(138,107,255,0.12), transparent 60%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 40%, var(--bg-0));
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+::selection{ background:rgba(63,224,224,0.3); }
+::-webkit-scrollbar{width:9px; height:9px;}
+::-webkit-scrollbar-thumb{background:rgba(120,190,255,0.25); border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+a{color:inherit;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+:focus-visible{ outline:2px solid var(--neon-cyan); outline-offset:2px; border-radius:6px; }
+
+.glass{
+  background:var(--glass);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border:1px solid var(--glass-brd);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-glow);
+}
+.hairline{ height:1px; background:linear-gradient(90deg, transparent, rgba(120,190,255,0.25), transparent); border:none; margin:14px 0;}
+
+/* ============ LAYOUT SHELL ============ */
+#app{ min-height:100vh; }
+.hidden{ display:none !important; }
+
+/* ---------- LOGIN SCREEN ---------- */
+.login-wrap{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:24px; position:relative;
+}
+.login-wrap::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(120,190,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,190,255,0.05) 1px, transparent 1px);
+  background-size:42px 42px;
+  mask-image: radial-gradient(circle at 50% 20%, black, transparent 75%);
+}
+.login-card{
+  width:100%; max-width:960px; display:grid; grid-template-columns:1.05fr 1fr;
+  overflow:hidden; position:relative; z-index:1;
+}
+.login-brand{
+  padding:44px 38px; position:relative;
+  background:linear-gradient(160deg, rgba(63,224,224,0.10), rgba(138,107,255,0.08));
+  border-right:1px solid var(--glass-brd);
+  display:flex; flex-direction:column; justify-content:space-between;
+}
+.brand-mark{ display:flex; align-items:center; gap:12px; }
+.brand-glyph{
+  width:46px; height:46px; border-radius:12px; flex:none;
+  background:conic-gradient(from 220deg, var(--neon-cyan), var(--neon-violet), var(--neon-teal), var(--neon-cyan));
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; color:#04121a; font-size:18px;
+  box-shadow:0 0 24px rgba(63,224,224,0.45);
+}
+.brand-name{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:0.5px;}
+.brand-sub{ font-size:12px; color:var(--text-dim); letter-spacing:0.6px; text-transform:uppercase; margin-top:2px;}
+.login-headline{ margin-top:36px; }
+.login-headline h1{
+  font-family:var(--font-display); font-size:clamp(26px,3.4vw,34px); line-height:1.15; font-weight:700;
+  background:linear-gradient(120deg,#eef4ff, #9fe8e8 60%, #b9a9ff);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.login-headline p{ margin-top:14px; color:var(--text-mid); font-size:14.5px; line-height:1.7; max-width:38ch;}
+.login-stats{ display:flex; gap:22px; margin-top:30px; flex-wrap:wrap;}
+.login-stats div b{ display:block; font-family:var(--font-mono); font-size:20px; color:var(--neon-cyan);}
+.login-stats div span{ font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;}
+.geo-badge{
+  margin-top:30px; display:inline-flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text-dim);
+  padding:8px 12px; border:1px solid var(--glass-brd); border-radius:99px; width:fit-content;
+}
+.dot-live{ width:7px; height:7px; border-radius:50%; background:var(--neon-teal); box-shadow:0 0 8px var(--neon-teal); animation:pulse 1.8s infinite;}
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+.login-form{ padding:44px 38px; display:flex; flex-direction:column; }
+.role-tabs{ display:flex; gap:8px; background:rgba(255,255,255,0.03); padding:5px; border-radius:12px; border:1px solid var(--glass-brd);}
+.role-tab{
+  flex:1; border:none; background:transparent; color:var(--text-dim); padding:10px 6px; border-radius:9px;
+  font-size:12.5px; font-weight:600; letter-spacing:0.2px; transition:all .2s ease;
+}
+.role-tab.active{ background:linear-gradient(135deg, rgba(63,224,224,0.18), rgba(138,107,255,0.18)); color:var(--text-hi); box-shadow:inset 0 0 0 1px rgba(120,190,255,0.35);}
+.field{ margin-top:18px; }
+.field label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-dim); display:block; margin-bottom:7px;}
+.field input, .field select, .field textarea{
+  width:100%; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,0.03);
+  border:1px solid var(--glass-brd); color:var(--text-hi); font-size:14px; transition:border-color .15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--neon-cyan); }
+.btn{
+  border:none; border-radius:11px; padding:13px 18px; font-weight:600; font-size:14px; letter-spacing:0.2px;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform .12s ease, box-shadow .2s ease;
+}
+.btn:active{ transform:scale(0.98); }
+.btn-primary{ background:linear-gradient(135deg, var(--neon-cyan), var(--neon-violet)); color:#04121a; box-shadow:0 6px 22px rgba(63,224,224,0.25);}
+.btn-primary:hover{ box-shadow:0 8px 28px rgba(63,224,224,0.4);}
+.btn-ghost{ background:rgba(255,255,255,0.04); color:var(--text-hi); border:1px solid var(--glass-brd); }
+.btn-ghost:hover{ border-color:var(--neon-cyan); }
+.btn-danger{ background:linear-gradient(135deg, #ff5d7a, #ff8a5d); color:#2a0a0a;}
+.btn-sm{ padding:8px 12px; font-size:12.5px; border-radius:9px;}
+.btn-block{ width:100%; margin-top:22px;}
+.login-hint{ margin-top:16px; font-size:12px; color:var(--text-dim); line-height:1.6; background:rgba(255,255,255,0.02); border:1px dashed var(--glass-brd); padding:10px 12px; border-radius:10px;}
+.login-hint b{ color:var(--neon-teal); }
+.login-error{ margin-top:14px; font-size:12.5px; color:var(--neon-rose); display:none;}
+
+/* ============ SHELL (post-login) ============ */
+.shell{ display:grid; grid-template-columns:250px 1fr; min-height:100vh; }
+.sidebar{
+  border-right:1px solid var(--glass-brd);
+  background:linear-gradient(180deg, rgba(13,20,38,0.7), rgba(6,10,18,0.7));
+  padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; z-index:40;
+}
+.side-brand{ display:flex; align-items:center; gap:10px; padding:0 6px 20px; }
+.side-brand .brand-glyph{ width:36px; height:36px; font-size:14px; border-radius:9px;}
+.side-brand span{ font-family:var(--font-display); font-weight:700; font-size:16px;}
+.side-role{ font-size:10.5px; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.8px; padding:0 6px 16px; }
+.nav-group-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.7px; color:var(--text-dim); padding:14px 10px 6px;}
+.nav-link{
+  display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; color:var(--text-mid);
+  font-size:13.5px; font-weight:500; margin-bottom:3px; border:1px solid transparent; transition:all .15s ease;
+}
+.nav-link:hover{ background:rgba(255,255,255,0.04); color:var(--text-hi); }
+.nav-link.active{
+  background:linear-gradient(135deg, rgba(63,224,224,0.14), rgba(138,107,255,0.1));
+  border-color:rgba(120,190,255,0.3); color:var(--text-hi);
+}
+.nav-ic{ width:18px; text-align:center; font-size:15px; flex:none; }
+.sidebar-foot{ margin-top:auto; padding-top:14px; }
+.user-chip{ display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-brd);}
+.user-ava{ width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--neon-teal),var(--neon-cyan)); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:#04121a; flex:none;}
+.user-meta{ overflow:hidden; }
+.user-meta b{ font-size:12.5px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.user-meta span{ font-size:10.5px; color:var(--text-dim);}
+.logout-btn{ width:100%; margin-top:10px; }
+
+.main{ padding:24px 28px 60px; min-width:0; }
+.topbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
+.topbar h1{ font-family:var(--font-display); font-size:22px; font-weight:700;}
+.topbar .sub{ font-size:12.5px; color:var(--text-dim); margin-top:3px;}
+.topbar-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.mobile-toggle{ display:none; }
+
+.notif-bell{ position:relative; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center;}
+.notif-dot{ position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%; background:var(--neon-rose); box-shadow:0 0 6px var(--neon-rose);}
+.notif-panel{
+  position:absolute; right:0; top:52px; width:320px; max-height:380px; overflow:auto; padding:8px; z-index:60;
+}
+.notif-item{ padding:10px 12px; border-radius:10px; margin-bottom:6px; background:rgba(255,255,255,0.03); font-size:12.5px; line-height:1.5;}
+.notif-item b{ color:var(--neon-amber); display:block; font-size:12px; margin-bottom:2px;}
+
+/* ---- grid / cards ---- */
+.grid{ display:grid; gap:16px; }
+.grid-4{ grid-template-columns:repeat(4,1fr); }
+.grid-3{ grid-template-columns:repeat(3,1fr); }
+.grid-2{ grid-template-columns:1.3fr 1fr; }
+@media (max-width:1100px){ .grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;} }
+@media (max-width:640px){ .grid-4{grid-template-columns:1fr 1fr;} .grid-3{grid-template-columns:1fr;} }
+
+.stat-card{ padding:18px 18px 16px; position:relative; overflow:hidden;}
+.stat-card .ic{ font-size:20px; opacity:0.85;}
+.stat-card .val{ font-family:var(--font-mono); font-size:28px; font-weight:600; margin-top:10px; color:var(--text-hi);}
+.stat-card .lbl{ font-size:12px; color:var(--text-dim); margin-top:4px;}
+.stat-card .accent{ position:absolute; top:0; left:0; width:100%; height:3px; }
+.acc-cyan{ background:linear-gradient(90deg,var(--neon-cyan),transparent);}
+.acc-teal{ background:linear-gradient(90deg,var(--neon-teal),transparent);}
+.acc-violet{ background:linear-gradient(90deg,var(--neon-violet),transparent);}
+.acc-amber{ background:linear-gradient(90deg,var(--neon-amber),transparent);}
+.acc-rose{ background:linear-gradient(90deg,var(--neon-rose),transparent);}
+
+.panel{ padding:20px 20px 22px; }
+.panel h3{ font-family:var(--font-display); font-size:15.5px; font-weight:600; margin-bottom:2px;}
+.panel .panel-sub{ font-size:12px; color:var(--text-dim); margin-bottom:14px;}
+
+.badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:4px 10px; border-radius:99px; letter-spacing:0.2px;}
+.badge-valid{ background:rgba(34,201,160,0.14); color:var(--neon-teal); border:1px solid rgba(34,201,160,0.35);}
+.badge-warn{ background:rgba(255,185,74,0.14); color:var(--neon-amber); border:1px solid rgba(255,185,74,0.35);}
+.badge-off{ background:rgba(255,93,122,0.14); color:var(--neon-rose); border:1px solid rgba(255,93,122,0.35);}
+.badge-pending{ background:rgba(138,107,255,0.16); color:var(--neon-violet); border:1px solid rgba(138,107,255,0.4);}
+
+/* ---- toolbar / search / filter ---- */
+.toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px;}
+.search-box{ position:relative; flex:1; min-width:200px;}
+.search-box input{ width:100%; padding:11px 14px 11px 36px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-brd); color:var(--text-hi); font-size:13.5px;}
+.search-box::before{ content:"⌕"; position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--text-dim); font-size:15px;}
+.select-filter{ padding:11px 14px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-brd); color:var(--text-hi); font-size:13px; min-width:150px;}
+
+/* ---- table ---- */
+.table-wrap{ overflow-x:auto; border-radius:14px; border:1px solid var(--glass-brd);}
+table{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px;}
+thead th{ text-align:left; padding:12px 14px; background:rgba(255,255,255,0.03); color:var(--text-dim); font-weight:600; text-transform:uppercase; font-size:10.5px; letter-spacing:0.5px; border-bottom:1px solid var(--glass-brd); white-space:nowrap;}
+tbody td{ padding:13px 14px; border-bottom:1px solid rgba(120,190,255,0.08); vertical-align:middle;}
+tbody tr:hover{ background:rgba(255,255,255,0.025);}
+tbody tr:last-child td{ border-bottom:none;}
+.row-actions{ display:flex; gap:6px; flex-wrap:wrap;}
+.icon-btn{ width:32px; height:32px; border-radius:8px; border:1px solid var(--glass-brd); background:rgba(255,255,255,0.03); display:inline-flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-mid); transition:all .15s;}
+.icon-btn:hover{ border-color:var(--neon-cyan); color:var(--neon-cyan);}
+.icon-btn.danger:hover{ border-color:var(--neon-rose); color:var(--neon-rose);}
+.empty-row td{ text-align:center; color:var(--text-dim); padding:34px; font-size:13px;}
+
+/* ---- modal ---- */
+.modal-overlay{ position:fixed; inset:0; background:rgba(4,7,14,0.72); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:200; padding:20px;}
+.modal-box{ width:100%; max-width:620px; max-height:88vh; overflow:auto; padding:26px 26px 24px;}
+.modal-head{ display:flex; align-items:center; justify-content:between; justify-content:space-between; margin-bottom:16px;}
+.modal-head h3{ font-family:var(--font-display); font-size:17px; font-weight:700;}
+.modal-close{ width:30px; height:30px; border-radius:8px; border:1px solid var(--glass-brd); background:rgba(255,255,255,0.03); color:var(--text-mid); font-size:14px;}
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 14px;}
+.form-grid .field.full{ grid-column:1/-1;}
+@media (max-width:520px){ .form-grid{ grid-template-columns:1fr;} }
+.modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:22px;}
+
+/* ---- doc/status ---- */
+.status-strip{ display:flex; align-items:center; gap:14px; padding:16px 18px; border-radius:14px; margin-bottom:18px;}
+.status-strip .dotL{ width:12px; height:12px; border-radius:50%; flex:none;}
+.doc-card{ padding:14px 16px; border-radius:12px; background:rgba(255,255,255,0.025); border:1px solid var(--glass-brd); display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+.doc-card .name{ font-size:13px; font-weight:600;}
+.doc-card .meta{ font-size:11px; color:var(--text-dim); margin-top:2px;}
+.upload-drop{ border:1.5px dashed var(--glass-brd); border-radius:14px; padding:26px 16px; text-align:center; color:var(--text-dim); font-size:12.5px; cursor:pointer; transition:border-color .15s;}
+.upload-drop:hover{ border-color:var(--neon-cyan); color:var(--text-mid);}
+
+/* ---- map ---- */
+#gisMap, #lksMiniMap, #tkskMap{ width:100%; height:100%; border-radius:14px; }
+.map-wrap{ height:440px; border-radius:16px; overflow:hidden; border:1px solid var(--glass-brd); position:relative;}
+.leaflet-popup-content-wrapper{ background:#0d1830; color:#eef4ff; border-radius:10px; border:1px solid rgba(120,190,255,0.3);}
+.leaflet-popup-tip{ background:#0d1830; }
+.leaflet-popup-content b{ color:var(--neon-cyan); }
+.gps-readout{ position:absolute; bottom:12px; left:12px; z-index:500; background:rgba(6,10,18,0.85); border:1px solid var(--glass-brd); padding:8px 12px; border-radius:10px; font-family:var(--font-mono); font-size:11px; color:var(--neon-teal);}
+
+/* misc */
+.section-title{ font-family:var(--font-display); font-size:19px; font-weight:700; margin-bottom:4px;}
+.section-sub{ color:var(--text-dim); font-size:13px; margin-bottom:18px;}
+.toast{ position:fixed; bottom:22px; right:22px; z-index:500; padding:13px 18px; border-radius:12px; font-size:13px; font-weight:600; max-width:320px; animation:toastIn .25s ease; }
+@keyframes toastIn{ from{ transform:translateY(14px); opacity:0;} to{ transform:translateY(0); opacity:1;} }
+.toast-ok{ background:linear-gradient(135deg, rgba(34,201,160,0.9), rgba(63,224,224,0.85)); color:#04121a;}
+.toast-err{ background:linear-gradient(135deg, rgba(255,93,122,0.9), rgba(255,138,93,0.85)); color:#2a0a0a;}
+.log-item{ display:flex; gap:12px; padding:11px 0; border-bottom:1px dashed rgba(120,190,255,0.1);}
+.log-item:last-child{ border-bottom:none;}
+.log-dot{ width:8px; height:8px; border-radius:50%; background:var(--neon-cyan); margin-top:5px; flex:none;}
+.log-txt b{ font-size:12.5px;}
+.log-txt span{ display:block; font-size:11px; color:var(--text-dim); margin-top:2px;}
+.chart-box{ height:250px; position:relative;}
+.progress-track{ height:6px; border-radius:99px; background:rgba(255,255,255,0.06); overflow:hidden; margin-top:8px;}
+.progress-fill{ height:100%; border-radius:99px; background:linear-gradient(90deg,var(--neon-cyan),var(--neon-teal));}
+
+/* ---- responsive shell ---- */
+@media (max-width:960px){
+  .shell{ grid-template-columns:1fr; }
+  .sidebar{
+    position:fixed; left:0; top:0; height:100vh; width:250px; transform:translateX(-104%);
+    transition:transform .25s ease; z-index:300;
+  }
+  .sidebar.open{ transform:translateX(0); box-shadow:20px 0 60px rgba(0,0,0,0.5);}
+  .mobile-toggle{ display:inline-flex; }
+  .main{ padding:18px 16px 50px;}
+  .login-card{ grid-template-columns:1fr; }
+  .login-brand{ border-right:none; border-bottom:1px solid var(--glass-brd); padding:32px 26px;}
+  .login-form{ padding:30px 26px;}
+  .sidebar-scrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:290;}
+  .sidebar-scrim.show{ display:block;}
+}
+@media (max-width:480px){
+  .topbar h1{ font-size:18px;}
+  .stat-card .val{ font-size:22px;}
+  .modal-box{ padding:20px 16px;}
+}
+</style>
 </head>
 <body>
 
@@ -141,6 +440,1173 @@
 
 <div id="modalHost"></div>
 
-<script src="script.js"></script>
+<script>
+/* =========================================================================
+   INUK — Integrasi Navigasi Unit Kesejahteraan Sosial
+   Vanilla JS SPA · localStorage persistence · Leaflet GIS · Chart.js
+   ========================================================================= */
+
+const KECAMATAN = ["Komodo","Boleng","Kuwus","Kuwus Barat","Lembor","Lembor Selatan",
+  "Welak","Sano Nggoang","Macang Pacar","Pacar","Ndoso","Mbeliling"];
+
+const DB_KEYS = { users:"inuk_users", lks:"inuk_lks", lk3:"inuk_lk3", psm:"inuk_psm",
+  tksk:"inuk_tksk", laporan:"inuk_laporan", log:"inuk_log", session:"inuk_session" };
+
+function db_get(key, fallback){ try{ const v = localStorage.getItem(key); return v? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
+function db_set(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function addDays(dateStr, days){ const d = new Date(dateStr); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+function fmtDate(d){ if(!d) return "-"; const dt = new Date(d); return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+function daysUntil(dateStr){ const diff = (new Date(dateStr) - new Date(todayISO())); return Math.ceil(diff/86400000); }
+function escapeHtml(s){ return (s||"").toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- SEED DATA ---------------- */
+function seedIfNeeded(){
+  if(!localStorage.getItem(DB_KEYS.users)){
+    db_set(DB_KEYS.users, [
+      {id:uid(), username:"admin", password:"admin123", role:"admin", name:"Admin Dinas Sosial"},
+      {id:uid(), username:"tksk", password:"tksk123", role:"tksk", name:"Yohanes Servas", tkskId:"TKSK-001"},
+      {id:uid(), username:"lks1", password:"lks123", role:"lks", name:"St Damian Binongko", lksId:"LKS-001"}
+    ]);
+  }
+  if(!localStorage.getItem(DB_KEYS.lks)){
+    const raw = [
+      ["LKS-001","St Damian Binongko","Jl. Binongko, RT 002 RW 002","Komodo",-8.4985,119.8795,"Panti Asuhan","Pastor Damian",120,"Valid"],
+      ["LKS-002","Kongregasi Kkottongnae Indonesia","Jalan Mangga Golek, RT/RW 006/002, Gang Matahari, Cowang Ndereng, Desa Batu Cermin","Komodo",-8.4762,119.8843,"Panti Sosial","Sr. Maria Kkottongnae",300,"Valid"],
+      ["LKS-003","Missionaries of the Poor Sacred Heart Home","Jln. Matahari Cowang Dereng Rt 006 RW 02, Desa Batu Cermin","Komodo",-8.4771,119.8869,"Rehabilitasi Sosial","Br. Joseph MOP",25,"Akan Habis"],
+      ["LKS-004","LKSA Abdi Kasih","Jl. Pasar Lembor Malawatar","Lembor",-8.6512,120.0429,"Panti Asuhan","Ibu Maria Wulan",400,"Valid"],
+      ["LKS-005","Perkumpulan Rumah Pekerti Inklusi","Golokoe, RT 014 RW 004, Kelurahan Wae Kelambu","Komodo",-8.4901,119.8951,"Disabilitas","Bpk. Andreas Jehaut",10,"Akan Habis"],
+      ["LKS-006","Rumah Singgah Santa Theresia","Jl. Frans Sales Lega, RT 005/RT 014, Kelurahan Wae Kelambu","Komodo",-8.4923,119.8931,"Rumah Singgah","Sr. Theresia FSGM",200,"Valid"],
+      ["LKS-007","Pastoral Sosial Orang Berkebutuhan Khusus (PSOBK)","Reweng, RT 004/RW 001, Desa Lendong","Lembor Selatan",-8.7203,120.0104,"Disabilitas","Rm. Fransiskus PSOBK",-15,"Tidak Aktif"],
+      ["LKS-008","Karya Murni","Jln. Gorontalo, Desa Gorontalo","Komodo",-8.4652,119.8703,"Panti Sosial","Sr. Klara Karya Murni",60,"Valid"]
+    ];
+    const list = raw.map(r=>({
+      id:r[0], nama:r[1], alamat:r[2], kecamatan:r[3], lat:r[4], lng:r[5],
+      jenis:r[6], pimpinan:r[7], kontak:"0812-"+Math.floor(1000+Math.random()*8999)+"-"+Math.floor(1000+Math.random()*8999),
+      tglDaftar:"2023-0"+(1+Math.floor(Math.random()*8))+"-1"+Math.floor(Math.random()*8),
+      tglIzinHabis: addDays(todayISO(), r[8]),
+      statusIzin: r[9],
+      statusDokumen: r[9]==="Tidak Aktif" ? "Ditolak" : (Math.random()>0.6 ? "Menunggu Verifikasi" : "Disetujui"),
+      dokumen:[
+        {id:uid(), nama:"Izin Operasional.pdf", tipe:"Izin Operasional", tglUpload:"2024-01-1"+Math.floor(Math.random()*8), status: r[9]==="Tidak Aktif"?"Ditolak":"Disetujui"},
+        {id:uid(), nama:"Tanda Daftar Dinas.pdf", tipe:"Tanda Daftar Dinas", tglUpload:"2024-01-1"+Math.floor(Math.random()*8), status: "Disetujui"}
+      ]
+    }));
+    db_set(DB_KEYS.lks, list);
+  }
+  if(!localStorage.getItem(DB_KEYS.lk3)) db_set(DB_KEYS.lk3, []);
+  if(!localStorage.getItem(DB_KEYS.psm)) db_set(DB_KEYS.psm, []);
+  if(!localStorage.getItem(DB_KEYS.tksk)) db_set(DB_KEYS.tksk, [
+    {id:"TKSK-001", nama:"Yohanes Servas", nip:"197805-TKSK-01", wilayah:"Komodo", kontak:"0813-4455-1123"},
+    {id:"TKSK-002", nama:"Maria Fatima", nip:"198601-TKSK-02", wilayah:"Lembor", kontak:"0812-9988-3344"}
+  ]);
+  if(!localStorage.getItem(DB_KEYS.laporan)) db_set(DB_KEYS.laporan, []);
+  if(!localStorage.getItem(DB_KEYS.log)) db_set(DB_KEYS.log, [
+    {id:uid(), waktu:new Date().toISOString(), aktor:"Sistem", aksi:"Inisialisasi", detail:"Basis data INUK berhasil disiapkan dengan 8 data LKS awal."}
+  ]);
+}
+seedIfNeeded();
+
+function addLog(aktor, aksi, detail){
+  const log = db_get(DB_KEYS.log, []);
+  log.unshift({id:uid(), waktu:new Date().toISOString(), aktor, aksi, detail});
+  db_set(DB_KEYS.log, log.slice(0,300));
+}
+
+/* ---------------- TOAST ---------------- */
+function toast(msg, type){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type==='err' ? 'toast-err':'toast-ok');
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 2600);
+}
+
+/* ---------------- SESSION / AUTH ---------------- */
+let CURRENT_USER = db_get(DB_KEYS.session, null);
+let selectedRole = 'admin';
+
+const roleHints = {
+  admin: 'Demo akun — <b>Administrator:</b> admin / admin123',
+  lks: 'Demo akun — <b>LKS:</b> lks1 / lks123 (St Damian Binongko)',
+  tksk: 'Demo akun — <b>TKSK:</b> tksk / tksk123 (Yohanes Servas)'
+};
+
+document.querySelectorAll('.role-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.role-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    selectedRole = tab.dataset.role;
+    document.getElementById('loginHint').innerHTML = roleHints[selectedRole];
+    document.getElementById('loginError').style.display='none';
+  });
+});
+
+document.getElementById('loginForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const users = db_get(DB_KEYS.users, []);
+  const found = users.find(x=>x.username===u && x.password===p && x.role===selectedRole);
+  if(!found){ document.getElementById('loginError').style.display='block'; return; }
+  CURRENT_USER = found;
+  db_set(DB_KEYS.session, found);
+  addLog(found.name, 'Login', 'Masuk sebagai '+found.role.toUpperCase());
+  bootApp();
+});
+
+document.getElementById('showRegisterBtn').addEventListener('click', ()=>{
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('registerScreen').classList.remove('hidden');
+  const sel = document.getElementById('regKec');
+  sel.innerHTML = KECAMATAN.map(k=>`<option>${k}</option>`).join('');
+});
+document.getElementById('backToLoginBtn').addEventListener('click', ()=>{
+  document.getElementById('registerScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+});
+document.getElementById('registerForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const users = db_get(DB_KEYS.users, []);
+  const uname = document.getElementById('regUser').value.trim();
+  if(users.some(x=>x.username===uname)){ toast('Username sudah digunakan','err'); return; }
+  const lksList = db_get(DB_KEYS.lks, []);
+  const newId = "LKS-"+String(lksList.length+1).padStart(3,'0');
+  const kec = document.getElementById('regKec').value;
+  const approxCoord = kecCoord(kec);
+  const newLks = {
+    id:newId, nama:document.getElementById('regNama').value.trim(),
+    alamat:document.getElementById('regAlamat').value.trim(), kecamatan:kec,
+    lat:approxCoord.lat + (Math.random()-0.5)*0.01, lng:approxCoord.lng + (Math.random()-0.5)*0.01,
+    jenis:document.getElementById('regJenis').value, pimpinan:document.getElementById('regPimpinan').value.trim(),
+    kontak:document.getElementById('regKontak').value.trim(), tglDaftar:todayISO(),
+    tglIzinHabis:addDays(todayISO(),0), statusIzin:"Tidak Aktif", statusDokumen:"Menunggu Verifikasi", dokumen:[]
+  };
+  lksList.push(newLks); db_set(DB_KEYS.lks, lksList);
+  users.push({id:uid(), username:uname, password:document.getElementById('regPass').value, role:'lks', name:newLks.nama, lksId:newId});
+  db_set(DB_KEYS.users, users);
+  addLog(newLks.nama, 'Registrasi Lembaga', 'Lembaga baru mendaftar melalui self-service.');
+  toast('Registrasi berhasil! Silakan login.');
+  document.getElementById('registerForm').reset();
+  document.getElementById('registerScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+});
+
+function kecCoord(kec){
+  const map = {
+    "Komodo":{lat:-8.4900,lng:119.8850}, "Boleng":{lat:-8.5800,lng:119.9600},
+    "Kuwus":{lat:-8.6700,lng:120.1500}, "Kuwus Barat":{lat:-8.6300,lng:120.1000},
+    "Lembor":{lat:-8.6510,lng:120.0430}, "Lembor Selatan":{lat:-8.7200,lng:120.0100},
+    "Welak":{lat:-8.6900,lng:120.2200}, "Sano Nggoang":{lat:-8.6100,lng:119.9700},
+    "Macang Pacar":{lat:-8.5700,lng:120.1800}, "Pacar":{lat:-8.5200,lng:120.2500},
+    "Ndoso":{lat:-8.5500,lng:120.2900}, "Mbeliling":{lat:-8.5600,lng:119.9300}
+  };
+  return map[kec] || {lat:-8.55, lng:120.0};
+}
+
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  addLog(CURRENT_USER.name, 'Logout', 'Keluar dari sesi.');
+  CURRENT_USER = null; localStorage.removeItem(DB_KEYS.session);
+  document.getElementById('appShell').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginForm').reset();
+});
+
+/* ---------------- NAV CONFIG ---------------- */
+const NAV = {
+  admin: [
+    {group:"Utama", items:[ {id:'dashboard', ic:'📊', label:'Dashboard'} ]},
+    {group:"Data PSKS", items:[
+      {id:'lks', ic:'🏢', label:'Data LKS'},
+      {id:'lk3', ic:'👨‍👩‍👧', label:'Data LK3'},
+      {id:'psm', ic:'🧑‍🤝‍🧑', label:'Data PSM'},
+      {id:'tksk', ic:'📍', label:'Data TKSK'},
+    ]},
+    {group:"Operasional", items:[
+      {id:'verifikasi', ic:'✅', label:'Verifikasi Dokumen'},
+      {id:'laporan', ic:'📝', label:'Laporan Lapangan'},
+      {id:'gis', ic:'🗺️', label:'GIS Sebaran'},
+      {id:'log', ic:'📜', label:'Log Aktivitas'},
+      {id:'backup', ic:'📦', label:'Backup & Export'},
+    ]}
+  ],
+  lks: [
+    {group:"Lembaga Saya", items:[
+      {id:'profil', ic:'🏢', label:'Profil Lembaga'},
+      {id:'dokumen', ic:'📄', label:'Dokumen Legalitas'},
+      {id:'status', ic:'🔔', label:'Status Verifikasi'},
+    ]}
+  ],
+  tksk: [
+    {group:"Lapangan", items:[
+      {id:'tdashboard', ic:'📊', label:'Ringkasan Wilayah'},
+      {id:'wilayah', ic:'🏢', label:'LKS di Wilayah'},
+      {id:'inputlaporan', ic:'📝', label:'Input Laporan'},
+      {id:'riwayat', ic:'📜', label:'Riwayat Laporan'},
+      {id:'tgis', ic:'🗺️', label:'Peta Lapangan'},
+    ]}
+  ]
+};
+let currentPage = null;
+let sidebarOpenState = false;
+
+function buildNav(){
+  const cont = document.getElementById('navContainer');
+  cont.innerHTML = '';
+  NAV[CURRENT_USER.role].forEach(g=>{
+    const lbl = document.createElement('div'); lbl.className='nav-group-label'; lbl.textContent = g.group;
+    cont.appendChild(lbl);
+    g.items.forEach(it=>{
+      const a = document.createElement('div');
+      a.className = 'nav-link'; a.dataset.page = it.id;
+      a.innerHTML = `<span class="nav-ic">${it.ic}</span><span>${it.label}</span>`;
+      a.addEventListener('click', ()=>{ navigateTo(it.id); if(window.innerWidth<=960) closeSidebar(); });
+      cont.appendChild(a);
+    });
+  });
+}
+
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarScrim').classList.remove('show'); }
+document.getElementById('mobileToggle').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarScrim').classList.toggle('show');
+});
+document.getElementById('sidebarScrim').addEventListener('click', closeSidebar);
+
+/* ---------------- BOOT ---------------- */
+function bootApp(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('registerScreen').classList.add('hidden');
+  document.getElementById('appShell').classList.remove('hidden');
+  document.getElementById('sideRole').textContent = CURRENT_USER.role.toUpperCase()+" — DINAS SOSIAL MABAR";
+  document.getElementById('userAva').textContent = (CURRENT_USER.name||'?').slice(0,1).toUpperCase();
+  document.getElementById('userName').textContent = CURRENT_USER.name;
+  document.getElementById('userSub').textContent = CURRENT_USER.role==='admin'?'Administrator Dinas':(CURRENT_USER.role==='lks'?'Pengelola Lembaga':'Petugas Lapangan');
+  buildNav();
+  const first = NAV[CURRENT_USER.role][0].items[0].id;
+  navigateTo(first);
+  refreshNotifBell();
+}
+
+function navigateTo(page){
+  currentPage = page;
+  document.querySelectorAll('.nav-link').forEach(n=>n.classList.toggle('active', n.dataset.page===page));
+  const titles = {
+    dashboard:['Dashboard','Ringkasan data PSKS Kabupaten Manggarai Barat'],
+    lks:['Data LKS','Lembaga Kesejahteraan Sosial terdaftar'],
+    lk3:['Data LK3','Lembaga Kesejahteraan Keluarga'],
+    psm:['Data PSM','Pekerja Sosial Masyarakat'],
+    tksk:['Data TKSK','Tenaga Kesejahteraan Sosial Kecamatan'],
+    verifikasi:['Verifikasi Dokumen','Tinjau dan validasi dokumen legalitas LKS'],
+    laporan:['Laporan Lapangan','Rekap laporan peninjauan TKSK'],
+    gis:['GIS Sebaran PSKS','Peta sebaran lembaga se-Manggarai Barat'],
+    log:['Log Aktivitas','Riwayat verifikasi dan aktivitas sistem'],
+    backup:['Backup & Export','Unduh salinan data dalam format JSON/GeoJSON'],
+    profil:['Profil Lembaga','Kelola data & informasi lembaga Anda'],
+    dokumen:['Dokumen Legalitas','Unggah Izin Operasional & Tanda Daftar Dinas'],
+    status:['Status Verifikasi','Pantau status verifikasi dokumen Anda'],
+    tdashboard:['Ringkasan Wilayah','Ikhtisar PSKS di wilayah tugas Anda'],
+    wilayah:['LKS di Wilayah','Daftar lembaga untuk ditinjau'],
+    inputlaporan:['Input Laporan Lapangan','Laporan peninjauan dengan geo-tagging GPS'],
+    riwayat:['Riwayat Laporan','Laporan yang telah Anda kirim'],
+    tgis:['Peta Lapangan','Lokasi LKS & titik laporan Anda']
+  };
+  document.getElementById('pageTitle').textContent = titles[page][0];
+  document.getElementById('pageSub').textContent = titles[page][1];
+  render(page);
+}
+
+/* ---------------- NOTIFICATIONS (izin akan habis) ---------------- */
+function getExpiringNotifications(){
+  const lks = db_get(DB_KEYS.lks, []);
+  return lks.filter(l=>{
+    const d = daysUntil(l.tglIzinHabis);
+    return d <= 30;
+  }).map(l=>{
+    const d = daysUntil(l.tglIzinHabis);
+    return { lks:l, days:d, expired: d<0 };
+  }).sort((a,b)=>a.days-b.days);
+}
+function refreshNotifBell(){
+  const list = getExpiringNotifications();
+  document.getElementById('notifDot').classList.toggle('hidden', list.length===0);
+  const panel = document.getElementById('notifPanel');
+  if(list.length===0){
+    panel.innerHTML = `<div class="notif-item">Tidak ada notifikasi izin mendekati kadaluarsa.</div>`;
+  } else {
+    panel.innerHTML = list.map(x=>`
+      <div class="notif-item">
+        <b>${x.expired?'⛔ Izin telah habis':'⚠️ Izin akan habis'}</b>
+        ${escapeHtml(x.lks.nama)} — ${x.expired ? `berakhir ${Math.abs(x.days)} hari lalu` : `${x.days} hari lagi`} (${fmtDate(x.lks.tglIzinHabis)})
+      </div>`).join('');
+  }
+}
+document.getElementById('notifBtn').addEventListener('click', ()=>{
+  document.getElementById('notifPanel').classList.toggle('hidden');
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#notifBtn') && !e.target.closest('#notifPanel')) document.getElementById('notifPanel').classList.add('hidden');
+});
+
+/* ---------------- STATUS BADGE HELPERS ---------------- */
+function statusIzinBadge(s){
+  if(s==='Valid') return `<span class="badge badge-valid">● Valid</span>`;
+  if(s==='Akan Habis') return `<span class="badge badge-warn">● Akan Habis</span>`;
+  return `<span class="badge badge-off">● Tidak Aktif</span>`;
+}
+function statusDokBadge(s){
+  if(s==='Disetujui') return `<span class="badge badge-valid">✓ Disetujui</span>`;
+  if(s==='Ditolak') return `<span class="badge badge-off">✕ Ditolak</span>`;
+  return `<span class="badge badge-pending">⏳ Menunggu Verifikasi</span>`;
+}
+function recalcStatusIzin(l){
+  const d = daysUntil(l.tglIzinHabis);
+  if(d < 0) return 'Tidak Aktif';
+  if(d <= 30) return 'Akan Habis';
+  return 'Valid';
+}
+function syncAllStatuses(){
+  const lks = db_get(DB_KEYS.lks, []);
+  lks.forEach(l=> l.statusIzin = recalcStatusIzin(l));
+  db_set(DB_KEYS.lks, lks);
+}
+
+/* =========================================================================
+   RENDER ROUTER
+   ========================================================================= */
+function render(page){
+  syncAllStatuses();
+  refreshNotifBell();
+  const c = document.getElementById('pageContent');
+  const fn = {
+    dashboard: renderDashboard, lks: renderLksTable, lk3: ()=>renderSimpleTable('lk3','LK3','Lembaga Kesejahteraan Keluarga'),
+    psm: ()=>renderSimpleTable('psm','PSM','Pekerja Sosial Masyarakat'),
+    tksk: renderTkskTable, verifikasi: renderVerifikasi, laporan: renderLaporanAdmin,
+    gis: renderGis, log: renderLog, backup: renderBackup,
+    profil: renderLksProfil, dokumen: renderLksDokumen, status: renderLksStatus,
+    tdashboard: renderTkskDashboard, wilayah: renderTkskWilayah, inputlaporan: renderTkskInput,
+    riwayat: renderTkskRiwayat, tgis: renderTkskGis
+  }[page];
+  if(fn) fn(c); else c.innerHTML = '<div class="panel glass">Halaman tidak ditemukan.</div>';
+}
+
+/* ================= ADMIN: DASHBOARD ================= */
+let chartRefs = {};
+function destroyCharts(){ Object.values(chartRefs).forEach(ch=>ch && ch.destroy()); chartRefs = {}; }
+
+function renderDashboard(c){
+  const lks = db_get(DB_KEYS.lks, []);
+  const lk3 = db_get(DB_KEYS.lk3, []);
+  const psm = db_get(DB_KEYS.psm, []);
+  const tksk = db_get(DB_KEYS.tksk, []);
+  const valid = lks.filter(l=>l.statusIzin==='Valid').length;
+  const warn = lks.filter(l=>l.statusIzin==='Akan Habis').length;
+  const off = lks.filter(l=>l.statusIzin==='Tidak Aktif').length;
+  const pending = lks.filter(l=>l.statusDokumen==='Menunggu Verifikasi').length;
+
+  c.innerHTML = `
+    <div class="grid grid-4">
+      <div class="glass stat-card"><span class="accent acc-cyan"></span><div class="ic">🏢</div><div class="val">${lks.length}</div><div class="lbl">Total Lembaga LKS</div></div>
+      <div class="glass stat-card"><span class="accent acc-teal"></span><div class="ic">✅</div><div class="val">${valid}</div><div class="lbl">Izin Valid Aktif</div></div>
+      <div class="glass stat-card"><span class="accent acc-amber"></span><div class="ic">⚠️</div><div class="val">${warn}</div><div class="lbl">Izin Akan Habis (≤30 hr)</div></div>
+      <div class="glass stat-card"><span class="accent acc-rose"></span><div class="ic">⏳</div><div class="val">${pending}</div><div class="lbl">Menunggu Verifikasi</div></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:16px;">
+      <div class="glass panel">
+        <h3>Status Izin Operasional LKS</h3>
+        <div class="panel-sub">Distribusi status izin seluruh lembaga terdaftar</div>
+        <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+      </div>
+      <div class="glass panel">
+        <h3>Sebaran per Kecamatan</h3>
+        <div class="panel-sub">Jumlah PSKS per wilayah kecamatan</div>
+        <div class="chart-box"><canvas id="chartKec"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="margin-top:16px;">
+      <div class="glass stat-card"><span class="accent acc-violet"></span><div class="ic">👨‍👩‍👧</div><div class="val">${lk3.length}</div><div class="lbl">Data LK3</div></div>
+      <div class="glass stat-card"><span class="accent acc-cyan"></span><div class="ic">🧑‍🤝‍🧑</div><div class="val">${psm.length}</div><div class="lbl">Data PSM</div></div>
+      <div class="glass stat-card"><span class="accent acc-teal"></span><div class="ic">📍</div><div class="val">${tksk.length}</div><div class="lbl">Petugas TKSK</div></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:16px; align-items:stretch;">
+      <div class="glass panel">
+        <h3>Peta Sebaran PSKS</h3>
+        <div class="panel-sub">Klik marker untuk detail lembaga</div>
+        <div class="map-wrap" style="height:320px;"><div id="dashMap"></div></div>
+      </div>
+      <div class="glass panel">
+        <h3>Notifikasi Kadaluarsa Izin</h3>
+        <div class="panel-sub">Lembaga dengan izin mendekati / telah habis masa berlaku</div>
+        <div id="dashNotifList" style="max-height:270px; overflow:auto;"></div>
+      </div>
+    </div>
+  `;
+
+  destroyCharts();
+  chartRefs.status = new Chart(document.getElementById('chartStatus'), {
+    type:'doughnut',
+    data:{ labels:['Valid','Akan Habis','Tidak Aktif'], datasets:[{ data:[valid,warn,off],
+      backgroundColor:['#22c9a0','#ffb94a','#ff5d7a'], borderColor:'#0a1120', borderWidth:3 }] },
+    options:{ plugins:{legend:{position:'bottom', labels:{color:'#a9b7d1', font:{size:11}}}}, cutout:'68%' }
+  });
+  const kecCount = {};
+  lks.forEach(l=> kecCount[l.kecamatan] = (kecCount[l.kecamatan]||0)+1);
+  chartRefs.kec = new Chart(document.getElementById('chartKec'), {
+    type:'bar',
+    data:{ labels:Object.keys(kecCount), datasets:[{ label:'Jumlah LKS', data:Object.values(kecCount),
+      backgroundColor:'rgba(63,224,224,0.55)', borderRadius:6, borderColor:'#3fe0e0', borderWidth:1 }] },
+    options:{ scales:{ x:{ticks:{color:'#a9b7d1',font:{size:10}}, grid:{color:'rgba(120,190,255,0.08)'}},
+      y:{ticks:{color:'#a9b7d1'}, grid:{color:'rgba(120,190,255,0.08)'}, beginAtZero:true} },
+      plugins:{legend:{display:false}} }
+  });
+
+  const map = L.map('dashMap', {scrollWheelZoom:false}).setView([-8.58,119.98], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(map);
+  lks.forEach(l=>{
+    const color = l.statusIzin==='Valid'?'#22c9a0':(l.statusIzin==='Akan Habis'?'#ffb94a':'#ff5d7a');
+    L.circleMarker([l.lat,l.lng],{radius:8, color, fillColor:color, fillOpacity:0.75, weight:2})
+      .addTo(map).bindPopup(`<b>${escapeHtml(l.nama)}</b><br>${escapeHtml(l.kecamatan)}<br>${statusIzinBadge(l.statusIzin)}`);
+  });
+  setTimeout(()=>map.invalidateSize(), 200);
+
+  const notifList = getExpiringNotifications();
+  document.getElementById('dashNotifList').innerHTML = notifList.length ? notifList.map(x=>`
+    <div class="doc-card">
+      <div><div class="name">${escapeHtml(x.lks.nama)}</div><div class="meta">${escapeHtml(x.lks.kecamatan)} · ${fmtDate(x.lks.tglIzinHabis)}</div></div>
+      ${x.expired? '<span class="badge badge-off">Habis '+Math.abs(x.days)+' hr lalu</span>' : '<span class="badge badge-warn">'+x.days+' hari lagi</span>'}
+    </div>`).join('') : `<div style="color:var(--text-dim); font-size:12.5px; padding:20px 0; text-align:center;">Tidak ada izin yang mendekati kadaluarsa 🎉</div>`;
+}
+
+/* ================= ADMIN: DATA LKS TABLE ================= */
+let lksFilterState = { q:'', kec:'', status:'' };
+function renderLksTable(c){
+  const lks = db_get(DB_KEYS.lks, []);
+  c.innerHTML = `
+    <div class="glass panel">
+      <div class="toolbar">
+        <div class="search-box"><input type="text" id="lksSearch" placeholder="Cari nama lembaga, pimpinan, alamat..." value="${escapeHtml(lksFilterState.q)}"/></div>
+        <select class="select-filter" id="lksKecFilter"><option value="">Semua Kecamatan</option></select>
+        <select class="select-filter" id="lksStatusFilter">
+          <option value="">Semua Status Izin</option><option>Valid</option><option>Akan Habis</option><option>Tidak Aktif</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="addLksBtn">+ Tambah LKS</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Nama Lembaga</th><th>Kecamatan</th><th>Jenis</th><th>Status Izin</th><th>Dokumen</th><th>Berlaku s.d</th><th>Aksi</th></tr></thead>
+          <tbody id="lksTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  const kecSel = document.getElementById('lksKecFilter');
+  kecSel.innerHTML += KECAMATAN.map(k=>`<option ${lksFilterState.kec===k?'selected':''}>${k}</option>`).join('');
+  kecSel.value = lksFilterState.kec;
+  document.getElementById('lksStatusFilter').value = lksFilterState.status;
+
+  document.getElementById('lksSearch').addEventListener('input', e=>{ lksFilterState.q = e.target.value; drawLksRows(); });
+  kecSel.addEventListener('change', e=>{ lksFilterState.kec = e.target.value; drawLksRows(); });
+  document.getElementById('lksStatusFilter').addEventListener('change', e=>{ lksFilterState.status = e.target.value; drawLksRows(); });
+  document.getElementById('addLksBtn').addEventListener('click', ()=>openLksModal(null));
+
+  drawLksRows();
+}
+function drawLksRows(){
+  const lks = db_get(DB_KEYS.lks, []);
+  const q = lksFilterState.q.toLowerCase();
+  const filtered = lks.filter(l=>
+    (!q || (l.nama+l.pimpinan+l.alamat).toLowerCase().includes(q)) &&
+    (!lksFilterState.kec || l.kecamatan===lksFilterState.kec) &&
+    (!lksFilterState.status || l.statusIzin===lksFilterState.status)
+  );
+  const tb = document.getElementById('lksTbody');
+  if(!filtered.length){ tb.innerHTML = `<tr class="empty-row"><td colspan="8">Tidak ada data yang cocok dengan pencarian/filter.</td></tr>`; return; }
+  tb.innerHTML = filtered.map(l=>`
+    <tr>
+      <td style="font-family:var(--font-mono); color:var(--text-dim); font-size:11.5px;">${l.id}</td>
+      <td><b>${escapeHtml(l.nama)}</b><div style="font-size:11px;color:var(--text-dim);">${escapeHtml(l.pimpinan)}</div></td>
+      <td>${escapeHtml(l.kecamatan)}</td>
+      <td>${escapeHtml(l.jenis||'-')}</td>
+      <td>${statusIzinBadge(l.statusIzin)}</td>
+      <td>${statusDokBadge(l.statusDokumen)}</td>
+      <td>${fmtDate(l.tglIzinHabis)}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" title="Lihat" onclick="viewLks('${l.id}')">👁</button>
+        <button class="icon-btn" title="Edit" onclick="openLksModal('${l.id}')">✎</button>
+        <button class="icon-btn danger" title="Hapus" onclick="deleteLks('${l.id}')">🗑</button>
+      </div></td>
+    </tr>`).join('');
+}
+function viewLks(id){
+  const l = db_get(DB_KEYS.lks, []).find(x=>x.id===id); if(!l) return;
+  openModal(`
+    <div class="modal-head"><h3>${escapeHtml(l.nama)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div style="font-size:13px; color:var(--text-mid); line-height:2;">
+      <div><b style="color:var(--text-hi)">Alamat:</b> ${escapeHtml(l.alamat)}</div>
+      <div><b style="color:var(--text-hi)">Kecamatan:</b> ${escapeHtml(l.kecamatan)}</div>
+      <div><b style="color:var(--text-hi)">Jenis Layanan:</b> ${escapeHtml(l.jenis||'-')}</div>
+      <div><b style="color:var(--text-hi)">Pimpinan:</b> ${escapeHtml(l.pimpinan)}</div>
+      <div><b style="color:var(--text-hi)">Kontak:</b> ${escapeHtml(l.kontak)}</div>
+      <div><b style="color:var(--text-hi)">Tgl Daftar:</b> ${fmtDate(l.tglDaftar)}</div>
+      <div><b style="color:var(--text-hi)">Status Izin:</b> ${statusIzinBadge(l.statusIzin)}</div>
+      <div><b style="color:var(--text-hi)">Berlaku s.d:</b> ${fmtDate(l.tglIzinHabis)}</div>
+      <div><b style="color:var(--text-hi)">Status Dokumen:</b> ${statusDokBadge(l.statusDokumen)}</div>
+      <div><b style="color:var(--text-hi)">Koordinat:</b> ${l.lat.toFixed(5)}, ${l.lng.toFixed(5)}</div>
+    </div>
+    <div class="hairline"></div>
+    <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:8px;">Dokumen (${(l.dokumen||[]).length})</div>
+    ${(l.dokumen||[]).map(d=>`<div class="doc-card"><div><div class="name">${escapeHtml(d.nama)}</div><div class="meta">${escapeHtml(d.tipe)} · ${fmtDate(d.tglUpload)}</div></div>${statusDokBadge(d.status)}</div>`).join('') || '<div style="color:var(--text-dim);font-size:12px;">Belum ada dokumen diunggah.</div>'}
+  `);
+}
+function openLksModal(id){
+  const isEdit = !!id;
+  const l = isEdit ? db_get(DB_KEYS.lks, []).find(x=>x.id===id) : null;
+  openModal(`
+    <div class="modal-head"><h3>${isEdit?'Edit Data LKS':'Tambah LKS Baru'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <form id="lksForm">
+      <div class="form-grid">
+        <div class="field full"><label>Nama Lembaga</label><input required id="fNama" value="${l?escapeHtml(l.nama):''}"/></div>
+        <div class="field full"><label>Alamat</label><input required id="fAlamat" value="${l?escapeHtml(l.alamat):''}"/></div>
+        <div class="field"><label>Kecamatan</label><select id="fKec">${KECAMATAN.map(k=>`<option ${l&&l.kecamatan===k?'selected':''}>${k}</option>`).join('')}</select></div>
+        <div class="field"><label>Jenis Layanan</label>
+          <select id="fJenis">${["Panti Asuhan","Panti Sosial Lansia","Rehabilitasi Sosial","Disabilitas","Rumah Singgah","Panti Sosial","Lainnya"].map(j=>`<option ${l&&l.jenis===j?'selected':''}>${j}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Pimpinan</label><input id="fPimpinan" value="${l?escapeHtml(l.pimpinan):''}"/></div>
+        <div class="field"><label>Kontak</label><input id="fKontak" value="${l?escapeHtml(l.kontak):''}"/></div>
+        <div class="field"><label>Latitude</label><input type="number" step="0.0001" id="fLat" value="${l?l.lat:-8.55}"/></div>
+        <div class="field"><label>Longitude</label><input type="number" step="0.0001" id="fLng" value="${l?l.lng:120.0}"/></div>
+        <div class="field"><label>Tgl Izin Habis</label><input type="date" id="fTglHabis" value="${l?l.tglIzinHabis:addDays(todayISO(),180)}"/></div>
+        <div class="field"><label>Status Dokumen</label>
+          <select id="fStatusDok">${["Menunggu Verifikasi","Disetujui","Ditolak"].map(s=>`<option ${l&&l.statusDokumen===s?'selected':''}>${s}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div>
+    </form>
+  `);
+  document.getElementById('lksForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const lksList = db_get(DB_KEYS.lks, []);
+    const data = {
+      nama:document.getElementById('fNama').value.trim(), alamat:document.getElementById('fAlamat').value.trim(),
+      kecamatan:document.getElementById('fKec').value, jenis:document.getElementById('fJenis').value,
+      pimpinan:document.getElementById('fPimpinan').value.trim(), kontak:document.getElementById('fKontak').value.trim(),
+      lat:parseFloat(document.getElementById('fLat').value), lng:parseFloat(document.getElementById('fLng').value),
+      tglIzinHabis:document.getElementById('fTglHabis').value, statusDokumen:document.getElementById('fStatusDok').value
+    };
+    if(isEdit){
+      const idx = lksList.findIndex(x=>x.id===id);
+      lksList[idx] = {...lksList[idx], ...data, statusIzin:recalcStatusIzin({tglIzinHabis:data.tglIzinHabis})};
+      addLog(CURRENT_USER.name, 'Edit Data LKS', `Memperbarui data ${data.nama}`);
+    } else {
+      const newId = "LKS-"+String(lksList.length+1).padStart(3,'0');
+      lksList.push({id:newId, ...data, tglDaftar:todayISO(), statusIzin:recalcStatusIzin({tglIzinHabis:data.tglIzinHabis}), dokumen:[]});
+      addLog(CURRENT_USER.name, 'Tambah Data LKS', `Menambahkan lembaga baru ${data.nama}`);
+    }
+    db_set(DB_KEYS.lks, lksList);
+    closeModal(); toast('Data LKS berhasil disimpan.'); render('lks');
+  });
+}
+function deleteLks(id){
+  const l = db_get(DB_KEYS.lks, []).find(x=>x.id===id);
+  openModal(`
+    <div class="modal-head"><h3>Hapus Data</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <p style="font-size:13.5px;color:var(--text-mid);">Yakin ingin menghapus <b style="color:var(--text-hi)">${escapeHtml(l.nama)}</b>? Tindakan ini tidak dapat dibatalkan.</p>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-danger" id="confirmDelBtn">Hapus</button></div>
+  `);
+  document.getElementById('confirmDelBtn').addEventListener('click', ()=>{
+    let lksList = db_get(DB_KEYS.lks, []).filter(x=>x.id!==id);
+    db_set(DB_KEYS.lks, lksList);
+    addLog(CURRENT_USER.name, 'Hapus Data LKS', `Menghapus lembaga ${l.nama}`);
+    closeModal(); toast('Data dihapus.'); render('lks');
+  });
+}
+
+/* ================= ADMIN: LK3 / PSM simple CRUD (generic) ================= */
+function renderSimpleTable(key, code, title){
+  const list = db_get(DB_KEYS[key], []);
+  const c = document.getElementById('pageContent');
+  c.innerHTML = `
+    <div class="glass panel">
+      <div class="toolbar">
+        <div class="search-box"><input type="text" id="genSearch" placeholder="Cari nama..."/></div>
+        <button class="btn btn-primary btn-sm" id="addGenBtn">+ Tambah ${code}</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Nama</th><th>Kecamatan</th><th>Kontak</th><th>Keterangan</th><th>Aksi</th></tr></thead>
+        <tbody id="genTbody"></tbody></table>
+      </div>
+      <div class="hairline"></div>
+      <div style="font-size:12px; color:var(--text-dim);">💡 Data ${title} akan ditambahkan menyusul oleh Dinas Sosial. Gunakan tombol di atas untuk menambahkan data secara manual.</div>
+    </div>
+  `;
+  function draw(q){
+    const filtered = list.filter(x=> !q || x.nama.toLowerCase().includes(q.toLowerCase()));
+    const tb = document.getElementById('genTbody');
+    tb.innerHTML = filtered.length ? filtered.map(x=>`
+      <tr><td><b>${escapeHtml(x.nama)}</b></td><td>${escapeHtml(x.kecamatan||'-')}</td><td>${escapeHtml(x.kontak||'-')}</td><td>${escapeHtml(x.ket||'-')}</td>
+      <td><div class="row-actions"><button class="icon-btn" onclick="editGen('${key}','${x.id}','${code}')">✎</button><button class="icon-btn danger" onclick="delGen('${key}','${x.id}','${code}','${title}')">🗑</button></div></td></tr>
+    `).join('') : `<tr class="empty-row"><td colspan="5">Belum ada data ${title}. Silakan tambahkan data baru.</td></tr>`;
+  }
+  draw('');
+  document.getElementById('genSearch').addEventListener('input', e=>draw(e.target.value));
+  document.getElementById('addGenBtn').addEventListener('click', ()=>genModal(key,null,code,title));
+}
+function genModal(key, id, code, title){
+  const list = db_get(DB_KEYS[key], []);
+  const x = id ? list.find(i=>i.id===id) : null;
+  openModal(`
+    <div class="modal-head"><h3>${x?'Edit':'Tambah'} Data ${code}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <form id="genForm">
+      <div class="form-grid">
+        <div class="field full"><label>Nama</label><input required id="gNama" value="${x?escapeHtml(x.nama):''}"/></div>
+        <div class="field"><label>Kecamatan</label><select id="gKec">${KECAMATAN.map(k=>`<option ${x&&x.kecamatan===k?'selected':''}>${k}</option>`).join('')}</select></div>
+        <div class="field"><label>Kontak</label><input id="gKontak" value="${x?escapeHtml(x.kontak||''):''}"/></div>
+        <div class="field full"><label>Keterangan</label><input id="gKet" value="${x?escapeHtml(x.ket||''):''}"/></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div>
+    </form>
+  `);
+  document.getElementById('genForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const data = {nama:document.getElementById('gNama').value.trim(), kecamatan:document.getElementById('gKec').value,
+      kontak:document.getElementById('gKontak').value.trim(), ket:document.getElementById('gKet').value.trim()};
+    if(x){ Object.assign(x, data); } else { list.push({id:uid(), ...data}); }
+    db_set(DB_KEYS[key], list);
+    addLog(CURRENT_USER.name, `${x?'Edit':'Tambah'} Data ${code}`, data.nama);
+    closeModal(); toast('Data tersimpan.'); render(key);
+  });
+}
+function editGen(key,id,code){ genModal(key,id,code,code); }
+function delGen(key,id,code,title){
+  openModal(`<div class="modal-head"><h3>Hapus Data ${code}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+  <p style="font-size:13.5px;color:var(--text-mid);">Yakin ingin menghapus data ini?</p>
+  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-danger" id="confDel">Hapus</button></div>`);
+  document.getElementById('confDel').addEventListener('click', ()=>{
+    let list = db_get(DB_KEYS[key], []).filter(x=>x.id!==id);
+    db_set(DB_KEYS[key], list);
+    addLog(CURRENT_USER.name, `Hapus Data ${code}`, 'Data dihapus');
+    closeModal(); toast('Data dihapus.'); render(key);
+  });
+}
+
+/* ================= ADMIN: TKSK TABLE ================= */
+function renderTkskTable(c){
+  const list = db_get(DB_KEYS.tksk, []);
+  c.innerHTML = `
+    <div class="glass panel">
+      <div class="toolbar">
+        <div class="search-box"><input type="text" id="tkskSearch" placeholder="Cari nama petugas..."/></div>
+        <button class="btn btn-primary btn-sm" id="addTkskBtn">+ Tambah TKSK</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>ID</th><th>Nama</th><th>NIP/No. Registrasi</th><th>Wilayah Tugas</th><th>Kontak</th><th>Aksi</th></tr></thead>
+        <tbody id="tkskTbody"></tbody></table>
+      </div>
+    </div>`;
+  function draw(q){
+    const filtered = list.filter(x=> !q || x.nama.toLowerCase().includes(q.toLowerCase()));
+    document.getElementById('tkskTbody').innerHTML = filtered.length ? filtered.map(t=>`
+      <tr><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-dim);">${t.id}</td><td><b>${escapeHtml(t.nama)}</b></td>
+      <td>${escapeHtml(t.nip)}</td><td>${escapeHtml(t.wilayah)}</td><td>${escapeHtml(t.kontak)}</td>
+      <td><div class="row-actions"><button class="icon-btn" onclick="editTksk('${t.id}')">✎</button><button class="icon-btn danger" onclick="delTksk('${t.id}')">🗑</button></div></td></tr>
+    `).join('') : `<tr class="empty-row"><td colspan="6">Belum ada data TKSK.</td></tr>`;
+  }
+  draw('');
+  document.getElementById('tkskSearch').addEventListener('input', e=>draw(e.target.value));
+  document.getElementById('addTkskBtn').addEventListener('click', ()=>tkskModal(null));
+}
+function tkskModal(id){
+  const list = db_get(DB_KEYS.tksk, []);
+  const t = id ? list.find(x=>x.id===id) : null;
+  openModal(`
+    <div class="modal-head"><h3>${t?'Edit':'Tambah'} Data TKSK</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <form id="tkskForm">
+      <div class="form-grid">
+        <div class="field full"><label>Nama Petugas</label><input required id="tNama" value="${t?escapeHtml(t.nama):''}"/></div>
+        <div class="field"><label>NIP / No. Registrasi</label><input id="tNip" value="${t?escapeHtml(t.nip):''}"/></div>
+        <div class="field"><label>Wilayah Tugas (Kecamatan)</label><select id="tWilayah">${KECAMATAN.map(k=>`<option ${t&&t.wilayah===k?'selected':''}>${k}</option>`).join('')}</select></div>
+        <div class="field full"><label>Kontak</label><input id="tKontak" value="${t?escapeHtml(t.kontak):''}"/></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div>
+    </form>`);
+  document.getElementById('tkskForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const data = {nama:document.getElementById('tNama').value.trim(), nip:document.getElementById('tNip').value.trim(),
+      wilayah:document.getElementById('tWilayah').value, kontak:document.getElementById('tKontak').value.trim()};
+    if(t){ Object.assign(t,data); } else { list.push({id:'TKSK-'+String(list.length+1).padStart(3,'0'), ...data}); }
+    db_set(DB_KEYS.tksk, list);
+    addLog(CURRENT_USER.name, `${t?'Edit':'Tambah'} Data TKSK`, data.nama);
+    closeModal(); toast('Data TKSK tersimpan.'); render('tksk');
+  });
+}
+function editTksk(id){ tkskModal(id); }
+function delTksk(id){
+  openModal(`<div class="modal-head"><h3>Hapus TKSK</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+  <p style="font-size:13.5px;color:var(--text-mid);">Yakin menghapus data petugas ini?</p>
+  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-danger" id="confDel2">Hapus</button></div>`);
+  document.getElementById('confDel2').addEventListener('click', ()=>{
+    let list = db_get(DB_KEYS.tksk, []).filter(x=>x.id!==id);
+    db_set(DB_KEYS.tksk, list);
+    addLog(CURRENT_USER.name, 'Hapus Data TKSK', 'Data dihapus');
+    closeModal(); toast('Data dihapus.'); render('tksk');
+  });
+}
+
+/* ================= ADMIN: VERIFIKASI ================= */
+function renderVerifikasi(c){
+  const lks = db_get(DB_KEYS.lks, []);
+  const pending = lks.filter(l=> (l.dokumen||[]).some(d=>d.status==='Menunggu Verifikasi') || l.statusDokumen==='Menunggu Verifikasi');
+  c.innerHTML = `
+    <div class="glass panel">
+      <h3>Antrean Verifikasi Dokumen</h3>
+      <div class="panel-sub">${pending.length} lembaga menunggu tinjauan dokumen legalitas</div>
+      <div id="verList"></div>
+    </div>`;
+  const wrap = document.getElementById('verList');
+  if(!pending.length){ wrap.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-dim); font-size:13px;">✅ Tidak ada dokumen yang menunggu verifikasi saat ini.</div>`; return; }
+  wrap.innerHTML = pending.map(l=>`
+    <div class="doc-card" style="align-items:flex-start;">
+      <div>
+        <div class="name">${escapeHtml(l.nama)}</div>
+        <div class="meta">${escapeHtml(l.kecamatan)} · Diajukan ${fmtDate(l.tglDaftar)}</div>
+        <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+          ${(l.dokumen||[]).map(d=>`<span class="badge badge-pending">${escapeHtml(d.tipe)}</span>`).join('') || '<span style="font-size:11px;color:var(--text-dim);">Belum ada berkas terlampir</span>'}
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-sm btn-ghost" onclick="viewLks('${l.id}')">Lihat Detail</button>
+        <button class="btn btn-sm btn-primary" onclick="verifyLks('${l.id}','Disetujui')">✓ Setujui</button>
+        <button class="btn btn-sm btn-danger" onclick="verifyLks('${l.id}','Ditolak')">✕ Tolak</button>
+      </div>
+    </div>`).join('');
+}
+function verifyLks(id, decision){
+  const lks = db_get(DB_KEYS.lks, []);
+  const l = lks.find(x=>x.id===id);
+  l.statusDokumen = decision;
+  (l.dokumen||[]).forEach(d=> d.status = decision);
+  db_set(DB_KEYS.lks, lks);
+  addLog(CURRENT_USER.name, 'Verifikasi Dokumen', `${decision==='Disetujui'?'Menyetujui':'Menolak'} dokumen ${l.nama}`);
+  toast(`Dokumen ${l.nama} telah ${decision.toLowerCase()}.`);
+  render('verifikasi');
+}
+
+/* ================= ADMIN: LAPORAN LAPANGAN ================= */
+function renderLaporanAdmin(c){
+  const laporan = db_get(DB_KEYS.laporan, []).slice().reverse();
+  c.innerHTML = `
+    <div class="glass panel">
+      <h3>Rekap Laporan Peninjauan Lapangan</h3>
+      <div class="panel-sub">Seluruh laporan yang dikirim oleh petugas TKSK</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Tanggal</th><th>Petugas</th><th>Lembaga Ditinjau</th><th>Koordinat GPS</th><th>Catatan</th></tr></thead>
+        <tbody>${laporan.length ? laporan.map(r=>`
+          <tr><td>${fmtDate(r.tanggal)}</td><td>${escapeHtml(r.tkskNama)}</td><td>${escapeHtml(r.lksNama)}</td>
+          <td style="font-family:var(--font-mono);font-size:11.5px;">${r.lat?.toFixed(5)}, ${r.lng?.toFixed(5)}</td>
+          <td style="max-width:260px;">${escapeHtml(r.catatan)}</td></tr>`).join('') :
+          `<tr class="empty-row"><td colspan="5">Belum ada laporan lapangan yang masuk.</td></tr>`}
+        </tbody></table>
+      </div>
+    </div>`;
+}
+
+/* ================= ADMIN: GIS ================= */
+function renderGis(c){
+  const lks = db_get(DB_KEYS.lks, []);
+  const tksk = db_get(DB_KEYS.tksk, []);
+  const laporan = db_get(DB_KEYS.laporan, []);
+  c.innerHTML = `
+    <div class="glass panel">
+      <div class="toolbar">
+        <h3 style="margin:0;">Peta Sebaran PSKS — Kabupaten Manggarai Barat</h3>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" id="exportGeoBtn">📤 Export GeoJSON</button>
+      </div>
+      <div class="panel-sub">Marker: 🏢 LKS · 📍 Titik laporan lapangan TKSK</div>
+      <div class="map-wrap"><div id="gisMap"></div></div>
+    </div>`;
+  const map = L.map('gisMap').setView([-8.58,119.98], 10.3);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+  lks.forEach(l=>{
+    const color = l.statusIzin==='Valid'?'#22c9a0':(l.statusIzin==='Akan Habis'?'#ffb94a':'#ff5d7a');
+    L.circleMarker([l.lat,l.lng],{radius:9,color,fillColor:color,fillOpacity:0.8,weight:2}).addTo(map)
+      .bindPopup(`<b>🏢 ${escapeHtml(l.nama)}</b><br>${escapeHtml(l.alamat)}<br>${escapeHtml(l.kecamatan)}<br>${statusIzinBadge(l.statusIzin)}`);
+  });
+  laporan.forEach(r=>{
+    if(!r.lat) return;
+    L.circleMarker([r.lat,r.lng],{radius:7,color:'#8a6bff',fillColor:'#8a6bff',fillOpacity:0.85,weight:2, dashArray:'2,2'}).addTo(map)
+      .bindPopup(`<b>📍 Laporan Lapangan</b><br>${escapeHtml(r.tkskNama)}<br>Meninjau: ${escapeHtml(r.lksNama)}<br>${fmtDate(r.tanggal)}`);
+  });
+  setTimeout(()=>map.invalidateSize(),150);
+  document.getElementById('exportGeoBtn').addEventListener('click', exportGeoJSON);
+}
+function exportGeoJSON(){
+  const lks = db_get(DB_KEYS.lks, []);
+  const geo = { type:"FeatureCollection", features: lks.map(l=>({
+    type:"Feature", geometry:{type:"Point", coordinates:[l.lng,l.lat]},
+    properties:{ id:l.id, nama:l.nama, kecamatan:l.kecamatan, alamat:l.alamat, statusIzin:l.statusIzin, tglIzinHabis:l.tglIzinHabis }
+  }))};
+  downloadFile('inuk_psks_manggarai_barat.geojson', JSON.stringify(geo,null,2));
+  addLog(CURRENT_USER.name, 'Export GeoJSON', 'Mengekspor peta sebaran PSKS ke GeoJSON');
+  toast('GeoJSON berhasil diunduh.');
+}
+function downloadFile(filename, content){
+  const blob = new Blob([content], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ================= ADMIN: LOG ================= */
+function renderLog(c){
+  const log = db_get(DB_KEYS.log, []);
+  c.innerHTML = `
+    <div class="glass panel">
+      <h3>Log Aktivitas & Verifikasi</h3>
+      <div class="panel-sub">${log.length} entri tercatat</div>
+      <div>${log.map(l=>`
+        <div class="log-item"><div class="log-dot"></div>
+          <div class="log-txt"><b>${escapeHtml(l.aktor)} — ${escapeHtml(l.aksi)}</b><span>${escapeHtml(l.detail)} · ${new Date(l.waktu).toLocaleString('id-ID')}</span></div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+/* ================= ADMIN: BACKUP ================= */
+function renderBackup(c){
+  c.innerHTML = `
+    <div class="grid grid-3">
+      <div class="glass panel">
+        <h3>📦 Backup Seluruh Data</h3>
+        <div class="panel-sub">Unduh seluruh basis data INUK (LKS, LK3, PSM, TKSK, Laporan, Log) dalam satu berkas JSON.</div>
+        <button class="btn btn-primary btn-block" id="backupAllBtn">Unduh Backup JSON</button>
+      </div>
+      <div class="glass panel">
+        <h3>🏢 Ekspor Data LKS</h3>
+        <div class="panel-sub">Unduh data LKS saja dalam format JSON, siap untuk diarsipkan atau diimpor ulang.</div>
+        <button class="btn btn-ghost btn-block" id="exportLksBtn">Unduh Data LKS</button>
+      </div>
+      <div class="glass panel">
+        <h3>🗺️ Ekspor GeoJSON</h3>
+        <div class="panel-sub">Unduh titik koordinat seluruh lembaga untuk digunakan pada aplikasi GIS lain (QGIS dll).</div>
+        <button class="btn btn-ghost btn-block" id="exportGeoBtn2">Unduh GeoJSON</button>
+      </div>
+    </div>
+    <div class="glass panel" style="margin-top:16px;">
+      <h3>Statistik Basis Data</h3>
+      <div class="grid grid-4" style="margin-top:10px;">
+        ${['lks','lk3','psm','tksk'].map(k=>`<div><div style="font-family:var(--font-mono);font-size:20px;color:var(--neon-cyan);">${db_get(DB_KEYS[k],[]).length}</div><div style="font-size:11px;color:var(--text-dim); text-transform:uppercase;">Tabel ${k}</div></div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('backupAllBtn').addEventListener('click', ()=>{
+    const all = {};
+    Object.entries(DB_KEYS).forEach(([k,v])=>{ if(k!=='session') all[k]=db_get(v,[]); });
+    downloadFile('inuk_backup_'+todayISO()+'.json', JSON.stringify(all,null,2));
+    addLog(CURRENT_USER.name, 'Backup Data', 'Mengunduh backup penuh basis data INUK');
+    toast('Backup penuh berhasil diunduh.');
+  });
+  document.getElementById('exportLksBtn').addEventListener('click', ()=>{
+    downloadFile('inuk_data_lks_'+todayISO()+'.json', JSON.stringify(db_get(DB_KEYS.lks,[]),null,2));
+    toast('Data LKS berhasil diunduh.');
+  });
+  document.getElementById('exportGeoBtn2').addEventListener('click', exportGeoJSON);
+}
+
+/* ================= MODAL HELPERS ================= */
+function openModal(html){
+  const host = document.getElementById('modalHost');
+  host.innerHTML = `<div class="modal-overlay" id="modalOverlay"><div class="modal-box glass">${html}</div></div>`;
+  document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+}
+function closeModal(){ document.getElementById('modalHost').innerHTML=''; }
+
+/* =========================================================================
+   ROLE: LKS
+   ========================================================================= */
+function myLks(){ return db_get(DB_KEYS.lks, []).find(x=>x.id===CURRENT_USER.lksId); }
+
+function renderLksProfil(c){
+  const l = myLks();
+  if(!l){ c.innerHTML = `<div class="glass panel">Data lembaga tidak ditemukan.</div>`; return; }
+  c.innerHTML = `
+    <div class="grid grid-2">
+      <div class="glass panel">
+        <h3>Profil Lembaga</h3>
+        <div class="panel-sub">Perbarui informasi lembaga Anda</div>
+        <form id="myProfilForm">
+          <div class="form-grid">
+            <div class="field full"><label>Nama Lembaga</label><input required id="pNama" value="${escapeHtml(l.nama)}"/></div>
+            <div class="field full"><label>Alamat</label><input required id="pAlamat" value="${escapeHtml(l.alamat)}"/></div>
+            <div class="field"><label>Kecamatan</label><select id="pKec">${KECAMATAN.map(k=>`<option ${l.kecamatan===k?'selected':''}>${k}</option>`).join('')}</select></div>
+            <div class="field"><label>Jenis Layanan</label><input id="pJenis" value="${escapeHtml(l.jenis||'')}"/></div>
+            <div class="field"><label>Nama Pimpinan</label><input id="pPimpinan" value="${escapeHtml(l.pimpinan)}"/></div>
+            <div class="field"><label>Kontak</label><input id="pKontak" value="${escapeHtml(l.kontak)}"/></div>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Simpan Perubahan</button>
+        </form>
+      </div>
+      <div class="glass panel">
+        <h3>Ringkasan</h3>
+        <div class="panel-sub">Status lembaga Anda saat ini</div>
+        <div class="doc-card"><div><div class="name">Status Izin</div><div class="meta">Berlaku s.d ${fmtDate(l.tglIzinHabis)}</div></div>${statusIzinBadge(l.statusIzin)}</div>
+        <div class="doc-card"><div><div class="name">Status Dokumen</div><div class="meta">Ditinjau oleh Dinas Sosial</div></div>${statusDokBadge(l.statusDokumen)}</div>
+        <div class="doc-card"><div><div class="name">Terdaftar Sejak</div><div class="meta">Tanggal registrasi</div></div><span style="font-size:12.5px;">${fmtDate(l.tglDaftar)}</span></div>
+        <div class="hairline"></div>
+        <div style="font-size:12px;color:var(--text-dim);">📍 Koordinat lokasi: <span style="font-family:var(--font-mono); color:var(--neon-cyan);">${l.lat.toFixed(5)}, ${l.lng.toFixed(5)}</span></div>
+        <div class="map-wrap" style="height:180px; margin-top:12px;"><div id="lksMiniMap"></div></div>
+      </div>
+    </div>`;
+  document.getElementById('myProfilForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const lksList = db_get(DB_KEYS.lks, []);
+    const idx = lksList.findIndex(x=>x.id===l.id);
+    lksList[idx] = {...lksList[idx],
+      nama:document.getElementById('pNama').value.trim(), alamat:document.getElementById('pAlamat').value.trim(),
+      kecamatan:document.getElementById('pKec').value, jenis:document.getElementById('pJenis').value.trim(),
+      pimpinan:document.getElementById('pPimpinan').value.trim(), kontak:document.getElementById('pKontak').value.trim()};
+    db_set(DB_KEYS.lks, lksList);
+    addLog(CURRENT_USER.name, 'Perbarui Profil', 'Lembaga memperbarui data profil sendiri');
+    toast('Profil berhasil diperbarui.'); render('profil');
+  });
+  const map = L.map('lksMiniMap',{scrollWheelZoom:false, dragging:false, zoomControl:false}).setView([l.lat,l.lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  L.circleMarker([l.lat,l.lng],{radius:9,color:'#3fe0e0',fillColor:'#3fe0e0',fillOpacity:0.8}).addTo(map);
+  setTimeout(()=>map.invalidateSize(),150);
+}
+
+function renderLksDokumen(c){
+  const l = myLks();
+  c.innerHTML = `
+    <div class="glass panel">
+      <h3>Unggah Dokumen Legalitas</h3>
+      <div class="panel-sub">Unggah Izin Operasional & Tanda Daftar Dinas untuk diverifikasi</div>
+      <div class="form-grid">
+        <div class="field"><label>Jenis Dokumen</label>
+          <select id="docJenis"><option>Izin Operasional</option><option>Tanda Daftar Dinas</option><option>Akta Notaris</option><option>Lainnya</option></select>
+        </div>
+        <div class="field"><label>Nama Berkas</label><input id="docNama" placeholder="cth. Izin_Operasional_2026.pdf"/></div>
+      </div>
+      <div class="upload-drop" id="uploadDrop">📤 Klik untuk memilih berkas (simulasi unggah — nama berkas dicatat pada sistem)</div>
+      <input type="file" id="fileInput" class="hidden"/>
+      <button class="btn btn-primary" style="margin-top:14px;" id="uploadBtn">Unggah Dokumen</button>
+    </div>
+    <div class="glass panel" style="margin-top:16px;">
+      <h3>Dokumen Terunggah</h3>
+      <div class="panel-sub">${(l.dokumen||[]).length} berkas</div>
+      <div id="docList"></div>
+    </div>`;
+  const drawDocs = ()=>{
+    document.getElementById('docList').innerHTML = (l.dokumen||[]).length ? l.dokumen.map(d=>`
+      <div class="doc-card"><div><div class="name">${escapeHtml(d.nama)}</div><div class="meta">${escapeHtml(d.tipe)} · diunggah ${fmtDate(d.tglUpload)}</div></div>${statusDokBadge(d.status)}</div>
+    `).join('') : `<div style="color:var(--text-dim); font-size:12.5px; padding:16px 0; text-align:center;">Belum ada dokumen diunggah.</div>`;
+  };
+  drawDocs();
+  document.getElementById('uploadDrop').addEventListener('click', ()=>document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', e=>{
+    if(e.target.files[0]) document.getElementById('docNama').value = e.target.files[0].name;
+  });
+  document.getElementById('uploadBtn').addEventListener('click', ()=>{
+    const nama = document.getElementById('docNama').value.trim() || 'Dokumen_'+todayISO()+'.pdf';
+    const tipe = document.getElementById('docJenis').value;
+    const lksList = db_get(DB_KEYS.lks, []);
+    const idx = lksList.findIndex(x=>x.id===l.id);
+    lksList[idx].dokumen = lksList[idx].dokumen || [];
+    lksList[idx].dokumen.push({id:uid(), nama, tipe, tglUpload:todayISO(), status:'Menunggu Verifikasi'});
+    lksList[idx].statusDokumen = 'Menunggu Verifikasi';
+    db_set(DB_KEYS.lks, lksList);
+    addLog(CURRENT_USER.name, 'Unggah Dokumen', `Mengunggah ${tipe}: ${nama}`);
+    toast('Dokumen berhasil diunggah, menunggu verifikasi.');
+    render('dokumen');
+  });
+}
+
+function renderLksStatus(c){
+  const l = myLks();
+  const map = { 'Disetujui':{color:'#22c9a0', text:'Dokumen Anda telah disetujui oleh Dinas Sosial. Lembaga Anda berstatus aktif.'},
+    'Ditolak':{color:'#ff5d7a', text:'Dokumen Anda ditolak. Silakan periksa kembali dan unggah ulang dokumen yang sesuai.'},
+    'Menunggu Verifikasi':{color:'#8a6bff', text:'Dokumen Anda sedang dalam proses verifikasi oleh Dinas Sosial.'} };
+  const s = map[l.statusDokumen] || map['Menunggu Verifikasi'];
+  c.innerHTML = `
+    <div class="glass status-strip"><span class="dotL" style="background:${s.color}; box-shadow:0 0 10px ${s.color};"></span>
+      <div><b style="font-size:14px;">${statusDokBadge(l.statusDokumen)}</b><div style="font-size:12.5px;color:var(--text-mid); margin-top:4px;">${s.text}</div></div>
+    </div>
+    <div class="grid grid-3">
+      <div class="glass stat-card"><span class="accent acc-cyan"></span><div class="ic">📅</div><div class="val" style="font-size:16px;">${fmtDate(l.tglIzinHabis)}</div><div class="lbl">Masa Berlaku Izin</div></div>
+      <div class="glass stat-card"><span class="accent acc-teal"></span><div class="ic">📄</div><div class="val">${(l.dokumen||[]).length}</div><div class="lbl">Dokumen Terunggah</div></div>
+      <div class="glass stat-card"><span class="accent acc-amber"></span><div class="ic">⏱</div><div class="val" style="font-size:16px;">${statusIzinBadge(l.statusIzin)}</div><div class="lbl">Status Izin Saat Ini</div></div>
+    </div>
+    <div class="glass panel">
+      <h3>Riwayat Verifikasi</h3>
+      <div class="panel-sub">Aktivitas terkait lembaga Anda</div>
+      <div>${db_get(DB_KEYS.log,[]).filter(x=>x.detail.includes(l.nama)).slice(0,10).map(x=>`
+        <div class="log-item"><div class="log-dot"></div><div class="log-txt"><b>${escapeHtml(x.aksi)}</b><span>${escapeHtml(x.detail)} · ${new Date(x.waktu).toLocaleString('id-ID')}</span></div></div>`).join('') || '<div style="color:var(--text-dim); font-size:12.5px;">Belum ada riwayat aktivitas.</div>'}
+      </div>
+    </div>`;
+}
+
+/* =========================================================================
+   ROLE: TKSK
+   ========================================================================= */
+function myTksk(){ return db_get(DB_KEYS.tksk, []).find(x=>x.id===CURRENT_USER.tkskId) || {nama:CURRENT_USER.name, wilayah:'Komodo', id:CURRENT_USER.tkskId||'TKSK-001'}; }
+
+function renderTkskDashboard(c){
+  const t = myTksk();
+  const lks = db_get(DB_KEYS.lks, []).filter(l=>l.kecamatan===t.wilayah);
+  const laporanSaya = db_get(DB_KEYS.laporan, []).filter(r=>r.tkskId===t.id);
+  c.innerHTML = `
+    <div class="grid grid-4">
+      <div class="glass stat-card"><span class="accent acc-cyan"></span><div class="ic">🏢</div><div class="val">${lks.length}</div><div class="lbl">LKS di ${escapeHtml(t.wilayah)}</div></div>
+      <div class="glass stat-card"><span class="accent acc-teal"></span><div class="ic">✅</div><div class="val">${lks.filter(l=>l.statusIzin==='Valid').length}</div><div class="lbl">Izin Valid</div></div>
+      <div class="glass stat-card"><span class="accent acc-amber"></span><div class="ic">⚠️</div><div class="val">${lks.filter(l=>l.statusIzin!=='Valid').length}</div><div class="lbl">Perlu Ditinjau</div></div>
+      <div class="glass stat-card"><span class="accent acc-violet"></span><div class="ic">📝</div><div class="val">${laporanSaya.length}</div><div class="lbl">Laporan Terkirim</div></div>
+    </div>
+    <div class="glass panel" style="margin-top:16px;">
+      <h3>Selamat bertugas, ${escapeHtml(t.nama)} 👋</h3>
+      <div class="panel-sub">Wilayah tugas: ${escapeHtml(t.wilayah)} · Kabupaten Manggarai Barat</div>
+      <p style="font-size:13px; color:var(--text-mid); line-height:1.7;">Gunakan menu <b>Input Laporan</b> untuk mencatat hasil peninjauan lapangan lengkap dengan koordinat GPS otomatis. Data akan langsung tersinkron ke Dashboard Administrator Dinas Sosial.</p>
+    </div>`;
+}
+function renderTkskWilayah(c){
+  const t = myTksk();
+  const all = db_get(DB_KEYS.lks, []);
+  c.innerHTML = `
+    <div class="glass panel">
+      <div class="toolbar">
+        <div class="search-box"><input type="text" id="wSearch" placeholder="Cari lembaga..."/></div>
+        <select class="select-filter" id="wKecFilter"><option value="">Semua Kecamatan</option>${KECAMATAN.map(k=>`<option ${k===t.wilayah?'selected':''}>${k}</option>`).join('')}</select>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Nama Lembaga</th><th>Kecamatan</th><th>Status Izin</th><th>Aksi</th></tr></thead><tbody id="wTbody"></tbody></table></div>
+    </div>`;
+  let kecFilter = t.wilayah;
+  function draw(q){
+    const filtered = all.filter(l=> (!q||l.nama.toLowerCase().includes(q.toLowerCase())) && (!kecFilter||l.kecamatan===kecFilter));
+    document.getElementById('wTbody').innerHTML = filtered.length ? filtered.map(l=>`
+      <tr><td><b>${escapeHtml(l.nama)}</b><div style="font-size:11px;color:var(--text-dim);">${escapeHtml(l.alamat)}</div></td>
+      <td>${escapeHtml(l.kecamatan)}</td><td>${statusIzinBadge(l.statusIzin)}</td>
+      <td><button class="btn btn-sm btn-primary" onclick="quickReport('${l.id}')">📝 Buat Laporan</button></td></tr>
+    `).join('') : `<tr class="empty-row"><td colspan="4">Tidak ada lembaga ditemukan.</td></tr>`;
+  }
+  draw('');
+  document.getElementById('wSearch').addEventListener('input', e=>draw(e.target.value));
+  document.getElementById('wKecFilter').addEventListener('change', e=>{ kecFilter=e.target.value; draw(document.getElementById('wSearch').value); });
+}
+let quickReportLksId = null;
+function quickReport(id){ quickReportLksId = id; navigateTo('inputlaporan'); }
+
+function renderTkskInput(c){
+  const t = myTksk();
+  const lksAll = db_get(DB_KEYS.lks, []);
+  c.innerHTML = `
+    <div class="grid grid-2">
+      <div class="glass panel">
+        <h3>Form Laporan Peninjauan Lapangan</h3>
+        <div class="panel-sub">Koordinat GPS akan diambil otomatis dari perangkat Anda</div>
+        <form id="reportForm">
+          <div class="field"><label>Lembaga yang Ditinjau</label>
+            <select id="rLks" required>${lksAll.map(l=>`<option value="${l.id}" ${quickReportLksId===l.id?'selected':''}>${escapeHtml(l.nama)} — ${escapeHtml(l.kecamatan)}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Tanggal Peninjauan</label><input type="date" id="rTanggal" value="${todayISO()}" required/></div>
+          <div class="field"><label>Catatan Hasil Peninjauan</label><textarea id="rCatatan" rows="4" placeholder="Kondisi fasilitas, jumlah penerima manfaat, temuan lapangan..." required></textarea></div>
+          <div class="field">
+            <label>Titik GPS</label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="rCoord" placeholder="Belum diambil" readonly style="flex:1;"/>
+              <button type="button" class="btn btn-ghost btn-sm" id="getGpsBtn">📍 Ambil GPS</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Kirim Laporan</button>
+        </form>
+      </div>
+      <div class="glass panel">
+        <h3>Peta Lokasi Saat Ini</h3>
+        <div class="panel-sub">Aktifkan GPS untuk menampilkan posisi Anda</div>
+        <div class="map-wrap" style="height:340px;"><div id="tkskMap"></div><div class="gps-readout hidden" id="gpsReadout">Menunggu GPS...</div></div>
+      </div>
+    </div>`;
+  quickReportLksId = null;
+
+  const map = L.map('tkskMap').setView([-8.58,119.98], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  lksAll.forEach(l=> L.circleMarker([l.lat,l.lng],{radius:6,color:'#3fe0e0',fillColor:'#3fe0e0',fillOpacity:0.6}).addTo(map).bindPopup(escapeHtml(l.nama)));
+  setTimeout(()=>map.invalidateSize(),150);
+  let currentMarker = null, currentCoord = null;
+
+  document.getElementById('getGpsBtn').addEventListener('click', ()=>{
+    const readout = document.getElementById('gpsReadout');
+    readout.classList.remove('hidden'); readout.textContent = 'Mengambil koordinat GPS...';
+    if(!navigator.geolocation){ readout.textContent = 'Geolocation tidak didukung perangkat ini.'; return; }
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const {latitude, longitude, accuracy} = pos.coords;
+      currentCoord = {lat:latitude, lng:longitude};
+      document.getElementById('rCoord').value = latitude.toFixed(6)+', '+longitude.toFixed(6);
+      readout.textContent = `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)}m)`;
+      if(currentMarker) map.removeLayer(currentMarker);
+      currentMarker = L.marker([latitude,longitude]).addTo(map).bindPopup('📍 Lokasi Anda saat ini').openPopup();
+      map.setView([latitude,longitude], 15);
+    }, err=>{
+      readout.textContent = 'Gagal mengambil GPS — menggunakan estimasi lokasi kecamatan.';
+      const coord = kecCoord(t.wilayah);
+      currentCoord = coord;
+      document.getElementById('rCoord').value = coord.lat.toFixed(6)+', '+coord.lng.toFixed(6)+' (estimasi)';
+    }, {enableHighAccuracy:true, timeout:8000});
+  });
+
+  document.getElementById('reportForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const lksId = document.getElementById('rLks').value;
+    const lksObj = lksAll.find(x=>x.id===lksId);
+    const coord = currentCoord || {lat:lksObj.lat, lng:lksObj.lng};
+    const laporan = db_get(DB_KEYS.laporan, []);
+    laporan.push({ id:uid(), tkskId:t.id, tkskNama:t.nama, lksId, lksNama:lksObj.nama,
+      tanggal:document.getElementById('rTanggal').value, catatan:document.getElementById('rCatatan').value.trim(),
+      lat:coord.lat, lng:coord.lng });
+    db_set(DB_KEYS.laporan, laporan);
+    addLog(t.nama, 'Laporan Lapangan', `Melaporkan hasil peninjauan di ${lksObj.nama}`);
+    toast('Laporan berhasil dikirim!');
+    document.getElementById('reportForm').reset();
+    document.getElementById('rCoord').value='';
+    navigateTo('riwayat');
+  });
+}
+function renderTkskRiwayat(c){
+  const t = myTksk();
+  const list = db_get(DB_KEYS.laporan, []).filter(r=>r.tkskId===t.id).reverse();
+  c.innerHTML = `
+    <div class="glass panel">
+      <h3>Riwayat Laporan Saya</h3>
+      <div class="panel-sub">${list.length} laporan telah dikirim</div>
+      <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Lembaga</th><th>Koordinat</th><th>Catatan</th></tr></thead>
+      <tbody>${list.length ? list.map(r=>`
+        <tr><td>${fmtDate(r.tanggal)}</td><td>${escapeHtml(r.lksNama)}</td>
+        <td style="font-family:var(--font-mono);font-size:11.5px;">${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</td>
+        <td style="max-width:280px;">${escapeHtml(r.catatan)}</td></tr>`).join('') : `<tr class="empty-row"><td colspan="4">Belum ada laporan yang dikirim.</td></tr>`}
+      </tbody></table></div>
+    </div>`;
+}
+function renderTkskGis(c){
+  const t = myTksk();
+  const lks = db_get(DB_KEYS.lks, []);
+  const laporan = db_get(DB_KEYS.laporan, []).filter(r=>r.tkskId===t.id);
+  c.innerHTML = `<div class="glass panel"><h3>Peta Lapangan — ${escapeHtml(t.wilayah)}</h3><div class="panel-sub">Lokasi LKS (biru) dan titik laporan Anda (ungu)</div>
+    <div class="map-wrap"><div id="tGis2"></div></div></div>`;
+  const map = L.map('tGis2').setView(kecCoord(t.wilayah) ? [kecCoord(t.wilayah).lat, kecCoord(t.wilayah).lng] : [-8.58,119.98], 11.5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  lks.forEach(l=> L.circleMarker([l.lat,l.lng],{radius:8,color:'#3fe0e0',fillColor:'#3fe0e0',fillOpacity:0.75,weight:2}).addTo(map).bindPopup(`🏢 <b>${escapeHtml(l.nama)}</b><br>${escapeHtml(l.kecamatan)}`));
+  laporan.forEach(r=> L.circleMarker([r.lat,r.lng],{radius:7,color:'#8a6bff',fillColor:'#8a6bff',fillOpacity:0.85,weight:2}).addTo(map).bindPopup(`📍 Laporan ${fmtDate(r.tanggal)}<br>${escapeHtml(r.lksNama)}`));
+  setTimeout(()=>map.invalidateSize(),150);
+}
+
+/* ---------------- INIT ---------------- */
+document.getElementById('statLoginLks').textContent = db_get(DB_KEYS.lks, []).length;
+document.getElementById('statLoginKec').textContent = KECAMATAN.length;
+document.getElementById('loginHint').innerHTML = roleHints.admin;
+
+if(CURRENT_USER){ bootApp(); }
+</script>
 </body>
 </html>
