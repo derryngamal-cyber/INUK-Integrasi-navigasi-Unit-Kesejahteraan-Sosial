@@ -605,6 +605,22 @@ function kecCoord(kec){
   };
   return map[kec] || {lat:-8.55, lng:120.0};
 }
+/* Deterministic small offset from an id string, so a marker's position stays
+   stable across re-renders instead of jumping around randomly. */
+function jitterVal(id){
+  let h = 0;
+  const s = String(id||'');
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 10000; }
+  return ((h/10000) - 0.5) * 0.03;
+}
+/* Approximate map coordinates for entities that only store a kecamatan name
+   (LK3 / PSM), using the kecamatan's centroid plus a small deterministic offset. */
+function jitteredCoord(list){
+  return (list||[]).map(x=>{
+    const base = kecCoord(x.kecamatan);
+    return {...x, lat: base.lat + jitterVal(x.id), lng: base.lng + jitterVal(x.id+'y')};
+  });
+}
 
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   addLog(CURRENT_USER.name, 'Logout', 'Keluar dari sesi.');
@@ -836,7 +852,13 @@ function renderDashboard(c){
     <div class="grid grid-2" style="margin-top:16px; align-items:stretch;">
       <div class="glass panel">
         <h3>Peta Sebaran PSKS</h3>
-        <div class="panel-sub">Klik marker untuk detail lembaga</div>
+        <div class="panel-sub">Klik marker untuk detail · sebaran LKS, LK3, PSM &amp; TKSK</div>
+        <div style="display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 4px;">
+          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#3fe0e0;display:inline-block;"></span>LKS</span>
+          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#8a6bff;display:inline-block;"></span>LK3</span>
+          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#ffb94a;display:inline-block;"></span>PSM</span>
+          <span style="font-size:11px; color:var(--text-mid); display:inline-flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#ff5d7a;display:inline-block;"></span>TKSK</span>
+        </div>
         <div class="map-wrap" style="height:320px;"><div id="dashMap"></div></div>
       </div>
       <div class="glass panel">
@@ -868,9 +890,21 @@ function renderDashboard(c){
   const map = L.map('dashMap', {scrollWheelZoom:false}).setView([-8.58,119.98], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(map);
   lks.forEach(l=>{
-    const color = l.statusIzin==='Valid'?'#22c9a0':(l.statusIzin==='Akan Habis'?'#ffb94a':'#ff5d7a');
-    L.circleMarker([l.lat,l.lng],{radius:8, color, fillColor:color, fillOpacity:0.75, weight:2})
-      .addTo(map).bindPopup(`<b>${escapeHtml(l.nama)}</b><br>${escapeHtml(l.kecamatan)}<br>${statusIzinBadge(l.statusIzin)}`);
+    L.circleMarker([l.lat,l.lng],{radius:8, color:'#3fe0e0', fillColor:'#3fe0e0', fillOpacity:0.8, weight:2})
+      .addTo(map).bindPopup(`<b>🏢 ${escapeHtml(l.nama)}</b><br>${escapeHtml(l.kecamatan)}<br>${statusIzinBadge(l.statusIzin)}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: LKS</span>`);
+  });
+  jitteredCoord(lk3).forEach(x=>{
+    L.circleMarker([x.lat,x.lng],{radius:7, color:'#8a6bff', fillColor:'#8a6bff', fillOpacity:0.8, weight:2})
+      .addTo(map).bindPopup(`<b>👨‍👩‍👧 ${escapeHtml(x.nama)}</b><br>${escapeHtml(x.kecamatan||'-')}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: LK3</span>`);
+  });
+  jitteredCoord(psm).forEach(x=>{
+    L.circleMarker([x.lat,x.lng],{radius:7, color:'#ffb94a', fillColor:'#ffb94a', fillOpacity:0.8, weight:2})
+      .addTo(map).bindPopup(`<b>🧑‍🤝‍🧑 ${escapeHtml(x.nama)}</b><br>${escapeHtml(x.kecamatan||'-')}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: PSM</span>`);
+  });
+  tksk.forEach(t=>{
+    const coord = kecCoord(t.wilayah);
+    L.circleMarker([coord.lat + jitterVal(t.id), coord.lng + jitterVal(t.id+'x')],{radius:7, color:'#ff5d7a', fillColor:'#ff5d7a', fillOpacity:0.8, weight:2})
+      .addTo(map).bindPopup(`<b>📍 ${escapeHtml(t.nama)}</b><br>${escapeHtml(t.wilayah)}<br><span style="font-size:11px;color:#a9b7d1;">Kategori: TKSK</span>`);
   });
   setTimeout(()=>map.invalidateSize(), 200);
 
@@ -960,7 +994,7 @@ function viewLks(id){
     </div>
     <div class="hairline"></div>
     <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:8px;">Dokumen (${(l.dokumen||[]).length})</div>
-    ${(l.dokumen||[]).map(d=>`<div class="doc-card"><div><div class="name">${escapeHtml(d.nama)}</div><div class="meta">${escapeHtml(d.tipe)} · ${fmtDate(d.tglUpload)}</div></div>${statusDokBadge(d.status)}</div>`).join('') || '<div style="color:var(--text-dim);font-size:12px;">Belum ada dokumen diunggah.</div>'}
+    ${(l.dokumen||[]).map(d=>`<div class="doc-card"><div><div class="name">${escapeHtml(d.nama)}</div><div class="meta">${escapeHtml(d.tipe)} · ${fmtDate(d.tglUpload)}</div></div><div style="display:flex; align-items:center; gap:8px;">${statusDokBadge(d.status)}${d.fileData?`<button class="icon-btn" title="Unduh PDF" onclick="downloadLksDoc('${l.id}','${d.id}')">⬇</button>`:''}</div></div>`).join('') || '<div style="color:var(--text-dim);font-size:12px;">Belum ada dokumen diunggah.</div>'}
   `);
 }
 function openLksModal(id){
@@ -1037,7 +1071,7 @@ function renderSimpleTable(key, code, title){
         <button class="btn btn-primary btn-sm" id="addGenBtn">+ Tambah ${code}</button>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>Nama</th><th>Kecamatan</th><th>Kontak</th><th>Keterangan</th><th>Aksi</th></tr></thead>
+        <table><thead><tr><th>Nama</th><th>Kecamatan</th><th>Kontak</th><th>Keterangan</th><th>Dokumen</th><th>Aksi</th></tr></thead>
         <tbody id="genTbody"></tbody></table>
       </div>
       <div class="hairline"></div>
@@ -1049,8 +1083,9 @@ function renderSimpleTable(key, code, title){
     const tb = document.getElementById('genTbody');
     tb.innerHTML = filtered.length ? filtered.map(x=>`
       <tr><td><b>${escapeHtml(x.nama)}</b></td><td>${escapeHtml(x.kecamatan||'-')}</td><td>${escapeHtml(x.kontak||'-')}</td><td>${escapeHtml(x.ket||'-')}</td>
-      <td><div class="row-actions"><button class="icon-btn" onclick="editGen('${key}','${x.id}','${code}')">✎</button><button class="icon-btn danger" onclick="delGen('${key}','${x.id}','${code}','${title}')">🗑</button></div></td></tr>
-    `).join('') : `<tr class="empty-row"><td colspan="5">Belum ada data ${title}. Silakan tambahkan data baru.</td></tr>`;
+      <td>${x.dokumen && x.dokumen.fileData ? `<span class="badge badge-valid">✓ PDF</span>` : `<span class="badge badge-off">Belum ada</span>`}</td>
+      <td><div class="row-actions">${x.dokumen && x.dokumen.fileData?`<button class="icon-btn" title="Unduh PDF" onclick="downloadGenDoc('${key}','${x.id}')">⬇</button>`:''}<button class="icon-btn" onclick="editGen('${key}','${x.id}','${code}')">✎</button><button class="icon-btn danger" onclick="delGen('${key}','${x.id}','${code}','${title}')">🗑</button></div></td></tr>
+    `).join('') : `<tr class="empty-row"><td colspan="6">Belum ada data ${title}. Silakan tambahkan data baru.</td></tr>`;
   }
   draw('');
   document.getElementById('genSearch').addEventListener('input', e=>draw(e.target.value));
@@ -1067,14 +1102,24 @@ function genModal(key, id, code, title){
         <div class="field"><label>Kecamatan</label><select id="gKec">${KECAMATAN.map(k=>`<option ${x&&x.kecamatan===k?'selected':''}>${k}</option>`).join('')}</select></div>
         <div class="field"><label>Kontak</label><input id="gKontak" value="${x?escapeHtml(x.kontak||''):''}"/></div>
         <div class="field full"><label>Keterangan</label><input id="gKet" value="${x?escapeHtml(x.ket||''):''}"/></div>
+        <div class="field full"><label>Dokumen Pendukung (PDF)</label>
+          <input type="file" id="gFile" accept="application/pdf,.pdf"/>
+          <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">${x&&x.dokumen&&x.dokumen.fileData?'📄 Sudah ada berkas: '+escapeHtml(x.dokumen.nama)+' (pilih berkas baru untuk mengganti)':'Belum ada berkas diunggah.'}</div>
+        </div>
       </div>
       <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div>
     </form>
   `);
-  document.getElementById('genForm').addEventListener('submit', e=>{
+  document.getElementById('genForm').addEventListener('submit', async e=>{
     e.preventDefault();
+    const file = document.getElementById('gFile').files[0];
+    if(file && !isPdfFile(file)){ toast('Berkas harus berformat PDF.','err'); return; }
     const data = {nama:document.getElementById('gNama').value.trim(), kecamatan:document.getElementById('gKec').value,
       kontak:document.getElementById('gKontak').value.trim(), ket:document.getElementById('gKet').value.trim()};
+    if(file){
+      try{ const fileData = await fileToDataURL(file); data.dokumen = {nama:file.name, tglUpload:todayISO(), fileData}; }
+      catch(err){ toast('Gagal membaca berkas PDF.','err'); return; }
+    }
     if(x){ Object.assign(x, data); } else { list.push({id:uid(), ...data}); }
     db_set(DB_KEYS[key], list);
     addLog(CURRENT_USER.name, `${x?'Edit':'Tambah'} Data ${code}`, data.nama);
@@ -1104,7 +1149,7 @@ function renderTkskTable(c){
         <button class="btn btn-primary btn-sm" id="addTkskBtn">+ Tambah TKSK</button>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>ID</th><th>Nama</th><th>NIP/No. Registrasi</th><th>Wilayah Tugas</th><th>Kontak</th><th>Aksi</th></tr></thead>
+        <table><thead><tr><th>ID</th><th>Nama</th><th>NIP/No. Registrasi</th><th>Wilayah Tugas</th><th>Kontak</th><th>Dokumen</th><th>Aksi</th></tr></thead>
         <tbody id="tkskTbody"></tbody></table>
       </div>
     </div>`;
@@ -1113,8 +1158,9 @@ function renderTkskTable(c){
     document.getElementById('tkskTbody').innerHTML = filtered.length ? filtered.map(t=>`
       <tr><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-dim);">${t.id}</td><td><b>${escapeHtml(t.nama)}</b></td>
       <td>${escapeHtml(t.nip)}</td><td>${escapeHtml(t.wilayah)}</td><td>${escapeHtml(t.kontak)}</td>
-      <td><div class="row-actions"><button class="icon-btn" onclick="editTksk('${t.id}')">✎</button><button class="icon-btn danger" onclick="delTksk('${t.id}')">🗑</button></div></td></tr>
-    `).join('') : `<tr class="empty-row"><td colspan="6">Belum ada data TKSK.</td></tr>`;
+      <td>${t.dokumen && t.dokumen.fileData ? `<span class="badge badge-valid">✓ PDF</span>` : `<span class="badge badge-off">Belum ada</span>`}</td>
+      <td><div class="row-actions">${t.dokumen && t.dokumen.fileData?`<button class="icon-btn" title="Unduh PDF" onclick="downloadTkskDoc('${t.id}')">⬇</button>`:''}<button class="icon-btn" onclick="editTksk('${t.id}')">✎</button><button class="icon-btn danger" onclick="delTksk('${t.id}')">🗑</button></div></td></tr>
+    `).join('') : `<tr class="empty-row"><td colspan="7">Belum ada data TKSK.</td></tr>`;
   }
   draw('');
   document.getElementById('tkskSearch').addEventListener('input', e=>draw(e.target.value));
@@ -1131,13 +1177,23 @@ function tkskModal(id){
         <div class="field"><label>NIP / No. Registrasi</label><input id="tNip" value="${t?escapeHtml(t.nip):''}"/></div>
         <div class="field"><label>Wilayah Tugas (Kecamatan)</label><select id="tWilayah">${KECAMATAN.map(k=>`<option ${t&&t.wilayah===k?'selected':''}>${k}</option>`).join('')}</select></div>
         <div class="field full"><label>Kontak</label><input id="tKontak" value="${t?escapeHtml(t.kontak):''}"/></div>
+        <div class="field full"><label>SK Penugasan / Dokumen (PDF)</label>
+          <input type="file" id="tFile" accept="application/pdf,.pdf"/>
+          <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">${t&&t.dokumen&&t.dokumen.fileData?'📄 Sudah ada berkas: '+escapeHtml(t.dokumen.nama)+' (pilih berkas baru untuk mengganti)':'Belum ada berkas diunggah.'}</div>
+        </div>
       </div>
       <div class="modal-actions"><button type="button" class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div>
     </form>`);
-  document.getElementById('tkskForm').addEventListener('submit', e=>{
+  document.getElementById('tkskForm').addEventListener('submit', async e=>{
     e.preventDefault();
+    const file = document.getElementById('tFile').files[0];
+    if(file && !isPdfFile(file)){ toast('Berkas harus berformat PDF.','err'); return; }
     const data = {nama:document.getElementById('tNama').value.trim(), nip:document.getElementById('tNip').value.trim(),
       wilayah:document.getElementById('tWilayah').value, kontak:document.getElementById('tKontak').value.trim()};
+    if(file){
+      try{ const fileData = await fileToDataURL(file); data.dokumen = {nama:file.name, tglUpload:todayISO(), fileData}; }
+      catch(err){ toast('Gagal membaca berkas PDF.','err'); return; }
+    }
     if(t){ Object.assign(t,data); } else { list.push({id:'TKSK-'+String(list.length+1).padStart(3,'0'), ...data}); }
     db_set(DB_KEYS.tksk, list);
     addLog(CURRENT_USER.name, `${t?'Edit':'Tambah'} Data TKSK`, data.nama);
@@ -1204,12 +1260,13 @@ function renderLaporanAdmin(c){
       <h3>Rekap Laporan Peninjauan Lapangan</h3>
       <div class="panel-sub">Seluruh laporan yang dikirim oleh petugas TKSK</div>
       <div class="table-wrap">
-        <table><thead><tr><th>Tanggal</th><th>Petugas</th><th>Lembaga Ditinjau</th><th>Koordinat GPS</th><th>Catatan</th></tr></thead>
+        <table><thead><tr><th>Tanggal</th><th>Petugas</th><th>Lembaga Ditinjau</th><th>Koordinat GPS</th><th>Catatan</th><th>Berkas</th></tr></thead>
         <tbody>${laporan.length ? laporan.map(r=>`
           <tr><td>${fmtDate(r.tanggal)}</td><td>${escapeHtml(r.tkskNama)}</td><td>${escapeHtml(r.lksNama)}</td>
           <td style="font-family:var(--font-mono);font-size:11.5px;">${r.lat?.toFixed(5)}, ${r.lng?.toFixed(5)}</td>
-          <td style="max-width:260px;">${escapeHtml(r.catatan)}</td></tr>`).join('') :
-          `<tr class="empty-row"><td colspan="5">Belum ada laporan lapangan yang masuk.</td></tr>`}
+          <td style="max-width:260px;">${escapeHtml(r.catatan)}</td>
+          <td>${r.fileLaporan && r.fileLaporan.fileData?`<button class="icon-btn" title="Unduh PDF" onclick="downloadLaporanFile('${r.id}')">⬇ PDF</button>`:'<span style="font-size:11px;color:var(--text-dim);">-</span>'}</td></tr>`).join('') :
+          `<tr class="empty-row"><td colspan="6">Belum ada laporan lapangan yang masuk.</td></tr>`}
         </tbody></table>
       </div>
     </div>`;
@@ -1262,6 +1319,41 @@ function downloadFile(filename, content){
   URL.revokeObjectURL(url);
 }
 
+/* ================= FILE PDF: UPLOAD & DOWNLOAD HELPERS ================= */
+function fileToDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.onerror = ()=>reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+function downloadDataURLFile(filename, dataUrl){
+  const a = document.createElement('a'); a.href=dataUrl; a.download=filename; a.click();
+}
+function isPdfFile(file){ return !!file && (file.type==='application/pdf' || /\.pdf$/i.test(file.name)); }
+function downloadStoredDoc(doc){
+  if(!doc || !doc.fileData){ toast('Berkas PDF belum diunggah untuk data ini.','err'); return; }
+  downloadDataURLFile(doc.nama || 'dokumen.pdf', doc.fileData);
+}
+function downloadLksDoc(lksId, docId){
+  const l = db_get(DB_KEYS.lks, []).find(x=>x.id===lksId);
+  const d = l && (l.dokumen||[]).find(x=>x.id===docId);
+  downloadStoredDoc(d);
+}
+function downloadGenDoc(key, id){
+  const x = db_get(DB_KEYS[key], []).find(i=>i.id===id);
+  downloadStoredDoc(x && x.dokumen);
+}
+function downloadTkskDoc(id){
+  const t = db_get(DB_KEYS.tksk, []).find(x=>x.id===id);
+  downloadStoredDoc(t && t.dokumen);
+}
+function downloadLaporanFile(id){
+  const r = db_get(DB_KEYS.laporan, []).find(x=>x.id===id);
+  downloadStoredDoc(r && r.fileLaporan);
+}
+
 /* ================= ADMIN: LOG ================= */
 function renderLog(c){
   const log = db_get(DB_KEYS.log, []);
@@ -1287,14 +1379,19 @@ function renderBackup(c){
         <button class="btn btn-primary btn-block" id="backupAllBtn">Unduh Backup JSON</button>
       </div>
       <div class="glass panel">
-        <h3>🏢 Ekspor Data LKS</h3>
-        <div class="panel-sub">Unduh data LKS saja dalam format JSON, siap untuk diarsipkan atau diimpor ulang.</div>
-        <button class="btn btn-ghost btn-block" id="exportLksBtn">Unduh Data LKS</button>
-      </div>
-      <div class="glass panel">
         <h3>🗺️ Ekspor GeoJSON</h3>
-        <div class="panel-sub">Unduh titik koordinat seluruh lembaga untuk digunakan pada aplikasi GIS lain (QGIS dll).</div>
+        <div class="panel-sub">Unduh titik koordinat seluruh lembaga LKS untuk digunakan pada aplikasi GIS lain (QGIS dll).</div>
         <button class="btn btn-ghost btn-block" id="exportGeoBtn2">Unduh GeoJSON</button>
+      </div>
+    </div>
+    <div class="glass panel" style="margin-top:16px;">
+      <h3>📄 Unduhan Data per Kategori PSKS</h3>
+      <div class="panel-sub">Setiap unduhan berisi keseluruhan data pada kategori terkait, dalam format JSON.</div>
+      <div class="grid grid-4" style="margin-top:6px;">
+        <button class="btn btn-ghost btn-block" id="exportLksBtn">🏢 Unduh Data LKS</button>
+        <button class="btn btn-ghost btn-block" id="exportLk3Btn">👨‍👩‍👧 Unduh Data LK3</button>
+        <button class="btn btn-ghost btn-block" id="exportPsmBtn">🧑‍🤝‍🧑 Unduh Data PSM</button>
+        <button class="btn btn-ghost btn-block" id="exportTkskBtn">📍 Unduh Data TKSK</button>
       </div>
     </div>
     <div class="glass panel" style="margin-top:16px;">
@@ -1310,10 +1407,15 @@ function renderBackup(c){
     addLog(CURRENT_USER.name, 'Backup Data', 'Mengunduh backup penuh basis data INUK');
     toast('Backup penuh berhasil diunduh.');
   });
-  document.getElementById('exportLksBtn').addEventListener('click', ()=>{
-    downloadFile('inuk_data_lks_'+todayISO()+'.json', JSON.stringify(db_get(DB_KEYS.lks,[]),null,2));
-    toast('Data LKS berhasil diunduh.');
-  });
+  function exportKategori(key, label){
+    downloadFile('inuk_data_'+key+'_'+todayISO()+'.json', JSON.stringify(db_get(DB_KEYS[key],[]),null,2));
+    addLog(CURRENT_USER.name, 'Export Data', `Mengunduh seluruh data ${label}`);
+    toast(`Seluruh data ${label} berhasil diunduh.`);
+  }
+  document.getElementById('exportLksBtn').addEventListener('click', ()=>exportKategori('lks','LKS'));
+  document.getElementById('exportLk3Btn').addEventListener('click', ()=>exportKategori('lk3','LK3'));
+  document.getElementById('exportPsmBtn').addEventListener('click', ()=>exportKategori('psm','PSM'));
+  document.getElementById('exportTkskBtn').addEventListener('click', ()=>exportKategori('tksk','TKSK'));
   document.getElementById('exportGeoBtn2').addEventListener('click', exportGeoJSON);
 }
 
@@ -1391,8 +1493,9 @@ function renderLksDokumen(c){
         </div>
         <div class="field"><label>Nama Berkas</label><input id="docNama" placeholder="cth. Izin_Operasional_2026.pdf"/></div>
       </div>
-      <div class="upload-drop" id="uploadDrop">📤 Klik untuk memilih berkas (simulasi unggah — nama berkas dicatat pada sistem)</div>
-      <input type="file" id="fileInput" class="hidden"/>
+      <div class="upload-drop" id="uploadDrop">📤 Klik untuk memilih berkas PDF</div>
+      <input type="file" id="fileInput" class="hidden" accept="application/pdf,.pdf"/>
+      <div id="fileChosen" style="font-size:11.5px; color:var(--text-dim); margin-top:6px;"></div>
       <button class="btn btn-primary" style="margin-top:14px;" id="uploadBtn">Unggah Dokumen</button>
     </div>
     <div class="glass panel" style="margin-top:16px;">
@@ -1402,25 +1505,34 @@ function renderLksDokumen(c){
     </div>`;
   const drawDocs = ()=>{
     document.getElementById('docList').innerHTML = (l.dokumen||[]).length ? l.dokumen.map(d=>`
-      <div class="doc-card"><div><div class="name">${escapeHtml(d.nama)}</div><div class="meta">${escapeHtml(d.tipe)} · diunggah ${fmtDate(d.tglUpload)}</div></div>${statusDokBadge(d.status)}</div>
+      <div class="doc-card"><div><div class="name">${escapeHtml(d.nama)}</div><div class="meta">${escapeHtml(d.tipe)} · diunggah ${fmtDate(d.tglUpload)}</div></div>
+      <div style="display:flex; align-items:center; gap:8px;">${statusDokBadge(d.status)}${d.fileData?`<button class="icon-btn" title="Unduh PDF" onclick="downloadLksDoc('${l.id}','${d.id}')">⬇</button>`:''}</div></div>
     `).join('') : `<div style="color:var(--text-dim); font-size:12.5px; padding:16px 0; text-align:center;">Belum ada dokumen diunggah.</div>`;
   };
   drawDocs();
   document.getElementById('uploadDrop').addEventListener('click', ()=>document.getElementById('fileInput').click());
   document.getElementById('fileInput').addEventListener('change', e=>{
-    if(e.target.files[0]) document.getElementById('docNama').value = e.target.files[0].name;
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!isPdfFile(file)){ toast('Berkas harus berformat PDF.','err'); e.target.value=''; return; }
+    document.getElementById('docNama').value = file.name;
+    document.getElementById('fileChosen').textContent = '📄 '+file.name+' siap diunggah.';
   });
-  document.getElementById('uploadBtn').addEventListener('click', ()=>{
-    const nama = document.getElementById('docNama').value.trim() || 'Dokumen_'+todayISO()+'.pdf';
+  document.getElementById('uploadBtn').addEventListener('click', async ()=>{
+    const file = document.getElementById('fileInput').files[0];
+    if(file && !isPdfFile(file)){ toast('Berkas harus berformat PDF.','err'); return; }
+    const nama = document.getElementById('docNama').value.trim() || (file? file.name : 'Dokumen_'+todayISO()+'.pdf');
     const tipe = document.getElementById('docJenis').value;
+    let fileData = null;
+    if(file){ try{ fileData = await fileToDataURL(file); }catch(e){ toast('Gagal membaca berkas PDF.','err'); return; } }
     const lksList = db_get(DB_KEYS.lks, []);
     const idx = lksList.findIndex(x=>x.id===l.id);
     lksList[idx].dokumen = lksList[idx].dokumen || [];
-    lksList[idx].dokumen.push({id:uid(), nama, tipe, tglUpload:todayISO(), status:'Menunggu Verifikasi'});
+    lksList[idx].dokumen.push({id:uid(), nama, tipe, tglUpload:todayISO(), status:'Menunggu Verifikasi', fileData});
     lksList[idx].statusDokumen = 'Menunggu Verifikasi';
     db_set(DB_KEYS.lks, lksList);
     addLog(CURRENT_USER.name, 'Unggah Dokumen', `Mengunggah ${tipe}: ${nama}`);
-    toast('Dokumen berhasil diunggah, menunggu verifikasi.');
+    toast('Dokumen PDF berhasil diunggah, menunggu verifikasi.');
     render('dokumen');
   });
 }
@@ -1519,6 +1631,11 @@ function renderTkskInput(c){
               <button type="button" class="btn btn-ghost btn-sm" id="getGpsBtn">📍 Ambil GPS</button>
             </div>
           </div>
+          <div class="field">
+            <label>Unggah Laporan (PDF)</label>
+            <input type="file" id="rFile" accept="application/pdf,.pdf"/>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">Opsional — lampirkan berkas laporan hasil peninjauan dalam format PDF.</div>
+          </div>
           <button class="btn btn-primary btn-block" type="submit">Kirim Laporan</button>
         </form>
       </div>
@@ -1556,17 +1673,24 @@ function renderTkskInput(c){
     }, {enableHighAccuracy:true, timeout:8000});
   });
 
-  document.getElementById('reportForm').addEventListener('submit', e=>{
+  document.getElementById('reportForm').addEventListener('submit', async e=>{
     e.preventDefault();
+    const file = document.getElementById('rFile').files[0];
+    if(file && !isPdfFile(file)){ toast('Berkas laporan harus berformat PDF.','err'); return; }
+    let fileLaporan = null;
+    if(file){
+      try{ fileLaporan = {nama:file.name, fileData: await fileToDataURL(file)}; }
+      catch(err){ toast('Gagal membaca berkas PDF.','err'); return; }
+    }
     const lksId = document.getElementById('rLks').value;
     const lksObj = lksAll.find(x=>x.id===lksId);
     const coord = currentCoord || {lat:lksObj.lat, lng:lksObj.lng};
     const laporan = db_get(DB_KEYS.laporan, []);
     laporan.push({ id:uid(), tkskId:t.id, tkskNama:t.nama, lksId, lksNama:lksObj.nama,
       tanggal:document.getElementById('rTanggal').value, catatan:document.getElementById('rCatatan').value.trim(),
-      lat:coord.lat, lng:coord.lng });
+      lat:coord.lat, lng:coord.lng, fileLaporan });
     db_set(DB_KEYS.laporan, laporan);
-    addLog(t.nama, 'Laporan Lapangan', `Melaporkan hasil peninjauan di ${lksObj.nama}`);
+    addLog(t.nama, 'Laporan Lapangan', `Melaporkan hasil peninjauan di ${lksObj.nama}${fileLaporan?' (dengan lampiran PDF)':''}`);
     toast('Laporan berhasil dikirim!');
     document.getElementById('reportForm').reset();
     document.getElementById('rCoord').value='';
@@ -1580,11 +1704,12 @@ function renderTkskRiwayat(c){
     <div class="glass panel">
       <h3>Riwayat Laporan Saya</h3>
       <div class="panel-sub">${list.length} laporan telah dikirim</div>
-      <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Lembaga</th><th>Koordinat</th><th>Catatan</th></tr></thead>
+      <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Lembaga</th><th>Koordinat</th><th>Catatan</th><th>Berkas</th></tr></thead>
       <tbody>${list.length ? list.map(r=>`
         <tr><td>${fmtDate(r.tanggal)}</td><td>${escapeHtml(r.lksNama)}</td>
         <td style="font-family:var(--font-mono);font-size:11.5px;">${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</td>
-        <td style="max-width:280px;">${escapeHtml(r.catatan)}</td></tr>`).join('') : `<tr class="empty-row"><td colspan="4">Belum ada laporan yang dikirim.</td></tr>`}
+        <td style="max-width:280px;">${escapeHtml(r.catatan)}</td>
+        <td>${r.fileLaporan && r.fileLaporan.fileData?`<button class="icon-btn" title="Unduh PDF" onclick="downloadLaporanFile('${r.id}')">⬇ PDF</button>`:'<span style="font-size:11px;color:var(--text-dim);">-</span>'}</td></tr>`).join('') : `<tr class="empty-row"><td colspan="5">Belum ada laporan yang dikirim.</td></tr>`}
       </tbody></table></div>
     </div>`;
 }
